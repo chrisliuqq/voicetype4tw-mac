@@ -1,4 +1,7 @@
-# VoiceType Mac
+# VoiceType4TW - Mac
+
+主要開發者：吉米丘
+協助開發者：Gemini、Nebula
 
 macOS 本地語音輸入工具。按下快捷鍵說話,自動辨識並輸入到任何應用程式。
 

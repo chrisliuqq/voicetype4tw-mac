@@ -303,6 +303,26 @@ class SettingsWindow(QMainWindow):
         mem_layout.addLayout(m_h_layout)
 
         splitter.addWidget(vocab_widget)
+        
+        # New: Auto Learned Vocab
+        learned_widget = QWidget()
+        learned_layout = QVBoxLayout(learned_widget)
+        learned_layout.addWidget(QLabel("💡 自動學習詞彙 (出現多次後會幫助辨識)"))
+        self.learned_list = QListWidget()
+        learned_layout.addWidget(self.learned_list)
+        
+        l_h_layout = QHBoxLayout()
+        self.btn_promote = QPushButton("升格為自訂")
+        self.btn_promote.clicked.connect(self._promote_vocab)
+        self.btn_refresh_learned = QPushButton("重新整理")
+        self.btn_refresh_learned.setObjectName("secondary")
+        self.btn_refresh_learned.clicked.connect(self._refresh_learned_vocab)
+        l_h_layout.addWidget(self.btn_promote)
+        l_h_layout.addWidget(self.btn_refresh_learned)
+        l_h_layout.addStretch()
+        learned_layout.addLayout(l_h_layout)
+        
+        splitter.addWidget(learned_widget)
         splitter.addWidget(mem_widget)
         return widget
 
@@ -391,6 +411,7 @@ class SettingsWindow(QMainWindow):
         
         # Load Vocab
         self._refresh_vocab()
+        self._refresh_learned_vocab()
         
         # Load Memory
         self._refresh_memory()
@@ -406,6 +427,31 @@ class SettingsWindow(QMainWindow):
                 self.vocab_list.addItem(word)
         except Exception as e:
             print(f"Error loading vocab: {e}")
+
+    def _refresh_learned_vocab(self):
+        self.learned_list.clear()
+        try:
+            from vocab.manager import load_all_learned_words, load_auto_memory
+            memory = load_auto_memory()
+            for word in load_all_learned_words():
+                count = memory.get(word, 0)
+                self.learned_list.addItem(f"{word} ({count}次)")
+        except Exception as e:
+            print(f"Error loading learned vocab: {e}")
+
+    def _promote_vocab(self):
+        item = self.learned_list.currentItem()
+        if not item: return
+        # Extract word from "word (N次)"
+        raw_text = item.text()
+        word = raw_text.split(" (")[0]
+        try:
+            from vocab.manager import promote_learned_word
+            promote_learned_word(word)
+            self._refresh_vocab()
+            self._refresh_learned_vocab()
+        except Exception as e:
+            QMessageBox.critical(self, "錯誤", str(e))
 
     def _refresh_memory(self):
         self.mem_tree.clear()

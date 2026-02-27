@@ -8,11 +8,12 @@ from typing import Callable
 
 class VoiceTypeMenuBar(rumps.App):
     def __init__(self, config: dict, on_quit: Callable, on_toggle_llm: Callable,
-                 on_config_saved: Callable = None):
+                 on_set_translation: Callable, on_config_saved: Callable = None):
         super().__init__("VoiceType4TW-Mac", quit_button=None)
         self.config = config
         self.on_quit = on_quit
         self.on_toggle_llm = on_toggle_llm
+        self.on_set_translation = on_set_translation
         self.on_config_saved = on_config_saved  # 設定儲存後重載 app
 
         self._build_menu()
@@ -32,7 +33,12 @@ class VoiceTypeMenuBar(rumps.App):
             rumps.MenuItem(f"模式: {mode}"),
             rumps.MenuItem(f"快捷鍵: {hotkey}"),
             None,
-            rumps.MenuItem(f"AI 潤飾: {llm_state}", callback=self._toggle_llm),
+            rumps.MenuItem(f"AI 潤飾/翻譯 : {llm_state}", callback=self._toggle_llm),
+            ("快速翻譯", [
+                rumps.MenuItem("翻譯成 英文", callback=self._translate_en),
+                rumps.MenuItem("翻譯成 日文", callback=self._translate_jp),
+                rumps.MenuItem("恢復正常模式", callback=self._translate_none),
+            ]),
             rumps.MenuItem("⚙️  偏好設定...", callback=self._open_settings),
             None,
             rumps.MenuItem("結束", callback=self._quit),
@@ -41,7 +47,16 @@ class VoiceTypeMenuBar(rumps.App):
     def _toggle_llm(self, sender):
         self.on_toggle_llm()
         enabled = self.config.get("llm_enabled", False)
-        sender.title = f"AI 潤飾: {'ON' if enabled else 'OFF'}"
+        sender.title = f"AI 潤飾/翻譯 : {'ON' if enabled else 'OFF'}"
+
+    def _translate_en(self, _):
+        self.on_set_translation("英文")
+
+    def _translate_jp(self, _):
+        self.on_set_translation("日文")
+
+    def _translate_none(self, _):
+        self.on_set_translation(None)
 
     def _open_settings(self, _):
         import subprocess

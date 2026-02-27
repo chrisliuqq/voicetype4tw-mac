@@ -144,6 +144,7 @@ class VoiceTypeApp:
         self.recorder = AudioRecorder(level_callback=self._on_level)
         self._recording_start: float = 0.0
         self._active_mode: str = "ptt"
+        self.translation_target = None  # 紀錄翻譯目標，例如 "英文"
         
         hotkeys = {
             "ptt": self.config.get("hotkey_ptt", "alt_r"),
@@ -163,6 +164,19 @@ class VoiceTypeApp:
         self._recording_start = time.time()
         self._active_mode = mode
         print(f"[main] Recording started (mode: {mode})")
+        
+        # 顯示錄音狀態與翻譯目標
+        prefix = ""
+        suffix = ""
+        if self.translation_target:
+            prefix = f"譯:{self.translation_target}"
+            suffix = ""
+        elif self.config.get("llm_enabled") or mode == "llm":
+            prefix = "AI"
+        
+        self.indicator.set_prefix(prefix)
+        self.indicator.set_label_suffix(suffix)
+            
         self.indicator.show()
         self.indicator.set_state("recording")
         self.recorder.start()
@@ -182,6 +196,42 @@ class VoiceTypeApp:
 
         if self.config.get("debug_mode"):
             print(f"STT：{stt_text}（耗時：{stt_elapsed:.2f} 秒）")
+
+        # ── 檢查魔術指令 (翻譯模式) ──────────────────────────────────
+        import re
+        # 更加彈性的正則表達式，支援「以下內容」、「把下面這句」等
+        magic_pattern = r"(把下面這[句段]話|以下內容|把內容)，?翻譯成(.+)"
+        magic_match = re.search(magic_pattern, stt_text)
+        
+        if magic_match:
+            target = magic_match.group(2).strip("。，！？ ")
+            if target:
+                self.translation_target = target
+                # 同步開啟 AI 模式，並儲存設定 (UI 可能需要重啟或手動刷新才會顯示 ON)
+                self.config["llm_enabled"] = True
+                save_config(self.config)
+                self.llm = build_llm(self.config) # 立即更新 LLM 實例
+                
+                # 回饋：閃爍 + 音效
+                self.indicator.flash()
+                
+                confirm_msg = f"「好的，我將為您翻譯成{target}。」"
+                self.indicator.set_state("done")
+                self.injector.inject(confirm_msg)
+                time.sleep(0.4)
+                self.indicator.hide()
+                return
+
+        # 匹配：取消翻譯 / 恢復正常 / 關閉翻譯
+        cancel_pattern = r"(取消|恢復|關閉|停止)翻譯|(恢復|回到)正常模式?"
+        if self.translation_target and re.search(cancel_pattern, stt_text):
+            self.translation_target = None
+            self.indicator.flash()
+            self.indicator.set_state("done")
+            self.injector.inject("「已恢復正常模式。」")
+            time.sleep(0.4)
+            self.indicator.hide()
+            return
 
         # 自動學習詞彙（背景）
         if stt_text:
@@ -206,19 +256,31 @@ class VoiceTypeApp:
             except Exception:
                 pass
 
-        # ── LLM ──────────────────────────────────────────────────
+            # ── LLM ──────────────────────────────────────────────────
         final_text = stt_text
         llm_elapsed = 0.0
 
-        # LLM if enabled OR if triggered by LLM-specific hotkey (mode="llm")
-        force_llm = (mode == "llm")
+        # LLM if enabled OR if triggered by LLM-specific hotkey (mode="llm") OR if translating
+        force_llm = (mode == "llm") or (self.translation_target is not None)
+        
+        # 確保在翻譯模式下 self.llm 已初始化
+        if force_llm and not self.llm:
+            self.llm = build_llm(self.config)
+
         if self.llm and (self.config.get("llm_enabled") or force_llm):
-            if force_llm and self.config.get("debug_mode"):
-                print("[debug] Forced LLM triggered by hotkey")
+            if self.config.get("debug_mode"):
+                msg = f"[debug] LLM Triggered. Mode: {mode}, Translating: {self.translation_target}"
+                print(f"\033[94m{msg}\033[0m")
             
             # 使用 is_refine=True 來減少記憶干擾
-            full_prompt = _build_llm_prompt(self.config, memory_context, is_refine=True)
-            llm_mode = self.config.get("llm_mode", "replace")
+            if self.translation_target:
+                full_prompt = f"你是一個專業的翻譯員。請將以下文字翻譯成【{self.translation_target}】。只需輸出翻譯後的結果，不要有任何多餘的解釋或標點符號外的文字。"
+                llm_mode = "replace"
+                if self.config.get("debug_mode"):
+                    print(f"[debug] Translation prompt: {full_prompt}")
+            else:
+                full_prompt = _build_llm_prompt(self.config, memory_context, is_refine=True)
+                llm_mode = self.config.get("llm_mode", "replace")
 
             if llm_mode == "fast":
                 # 先注入 STT 原文，背景 LLM 潤飾後替換
@@ -284,7 +346,8 @@ class VoiceTypeApp:
         self._post_process(stt_text, final_text, duration)
 
     def _post_process(self, stt_text: str, final_text: str, duration: float):
-        """錄音結束後：存記憶、存統計。"""
+        """錄音結束後：存記憶、存統計、學習詞彙。"""
+        # 1. 儲存對話記憶
         if self.config.get("memory_enabled", True):
             try:
                 from memory.manager import add_entry
@@ -292,17 +355,41 @@ class VoiceTypeApp:
             except Exception as e:
                 print(f"[main] 記憶儲存失敗: {e}")
 
+        # 2. 累計使用統計
         try:
             from stats.tracker import record_session
             record_session(duration, len(final_text))
         except Exception as e:
             print(f"[main] 統計儲存失敗: {e}")
+            
+        # 3. 智慧詞彙學習 (AI 輔助)
+        if self.llm and self.config.get("llm_enabled"):
+            try:
+                from vocab.manager import learn_from_text_with_llm
+                threading.Thread(
+                    target=learn_from_text_with_llm, 
+                    args=(self.llm, final_text), 
+                    daemon=True
+                ).start()
+            except Exception:
+                pass
 
     def _on_toggle_llm(self):
         self.config["llm_enabled"] = not self.config.get("llm_enabled", False)
         save_config(self.config)
         self.llm = build_llm(self.config)
         print(f"[main] LLM enabled: {self.config['llm_enabled']}")
+
+    def _on_set_translation(self, target: str | None):
+        self.translation_target = target
+        if target:
+            self.config["llm_enabled"] = True
+            save_config(self.config)
+            self.llm = build_llm(self.config)
+            self.indicator.flash()
+        else:
+            self.indicator.flash()
+        print(f"[main] Translation target set to: {target}")
 
     def _on_config_saved(self, new_config: dict):
         """設定視窗儲存後，重新載入設定與模組。"""
@@ -353,11 +440,11 @@ class VoiceTypeApp:
 
         import rumps
 
-        # Menu bar（主線程，macOS 要求）
         menu_bar = VoiceTypeMenuBar(
             config=self.config,
             on_quit=self._on_quit,
             on_toggle_llm=self._on_toggle_llm,
+            on_set_translation=self._on_set_translation,
             on_config_saved=self._on_config_saved,
         )
 

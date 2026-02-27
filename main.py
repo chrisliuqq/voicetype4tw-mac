@@ -1,0 +1,377 @@
+"""
+VoiceType Mac — main entry point.
+Wires up all modules and starts the application.
+"""
+import threading
+import time
+import sys
+from pathlib import Path
+from config import load_config, save_config
+from audio.recorder import AudioRecorder
+from hotkey.listener import HotkeyListener
+from output.injector import TextInjector
+from ui.mic_indicator import MicIndicator
+from ui.menu_bar import VoiceTypeMenuBar
+
+SOUL_PATH = Path(__file__).parent / "soul.md"
+
+# ── 內建 LLM Prompt ──────────────────────────────────────────────
+DEFAULT_LLM_PROMPT = (
+    "請將以下語音轉錄文字進行潤飾，要求如下：\n"
+    "1. 修正錯字與用詞（例如：Nabula→Nebula）\n"
+    "2. 加上適當的標點符號，讓語句自然分段\n"
+    "3. 所有標點符號必須使用全型（，。：；！？「」…）\n"
+    "4. 輸出必須使用繁體中文\n"
+    "5. 只輸出潤飾後的文字，不加任何說明或前言"
+)
+
+# 半型→全型標點對照表
+_PUNCT_MAP = str.maketrans({
+    ',':  '，',
+    '.':  '。',
+    '?':  '？',
+    '!':  '！',
+    ':':  '：',
+    ';':  '；',
+    '(':  '（',
+    ')':  '）',
+    '[':  '【',
+    ']':  '】',
+    '"':  '\u201c',
+    "'":  '\u2018',
+})
+
+def _fix_punctuation(text: str) -> str:
+    """把半型標點強制換成全型（只對非 ASCII 字元比例高的文字生效）。"""
+    if not text:
+        return text
+    # 計算中文字比例，若 > 20% 才做轉換，避免誤轉英文句子
+    chinese = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+    if chinese / max(len(text), 1) < 0.2:
+        return text
+    return text.translate(_PUNCT_MAP)
+
+
+def _load_soul() -> str:
+    """載入 soul.md，若不存在回傳空字串。"""
+    if SOUL_PATH.exists():
+        try:
+            return SOUL_PATH.read_text(encoding="utf-8").strip()
+        except Exception:
+            pass
+    return ""
+
+
+def _build_llm_prompt(config: dict, memory_context: str = "", is_refine: bool = False) -> str:
+    """
+    組合完整的 LLM system prompt：
+    [soul.md] + [記憶上下文] + [內建/自訂 prompt]
+    """
+    parts = []
+    soul = _load_soul()
+    if soul:
+        if config.get("debug_mode"):
+            print(f"[debug] Soul.md applied: {soul[:30]}...")
+        parts.append(soul)
+    
+    # 潤飾模式下，減少或不使用記憶上下文，專注於當前段落
+    if memory_context and not is_refine:
+        parts.append(memory_context)
+    
+    base_prompt = config.get("llm_prompt") or DEFAULT_LLM_PROMPT
+    parts.append(base_prompt)
+    return "\n\n".join(parts)
+
+
+def build_stt(config: dict):
+    engine = config.get("stt_engine", "local_whisper")
+    if engine == "groq":
+        from stt.groq_whisper import GroqWhisperSTT
+        return GroqWhisperSTT(api_key=config["groq_api_key"])
+    elif engine == "gemini":
+        from stt.gemini_stt import GeminiSTT
+        return GeminiSTT(api_key=config["gemini_api_key"],
+                         model=config.get("gemini_stt_model", "gemini-2.0-flash"))
+    elif engine == "openrouter":
+        from stt.openrouter_stt import OpenRouterSTT
+        return OpenRouterSTT(api_key=config["openrouter_api_key"],
+                             model=config.get("openrouter_model", "google/gemini-2.0-flash-001"))
+    else:
+        from stt.local_whisper import LocalWhisperSTT
+        return LocalWhisperSTT(model_size=config.get("whisper_model", "medium"))
+
+
+def build_llm(config: dict):
+    if not config.get("llm_enabled"):
+        return None
+    engine = config.get("llm_engine", "ollama")
+    if engine == "openai":
+        from llm.openai_llm import OpenAILLM
+        return OpenAILLM(api_key=config["openai_api_key"],
+                         model=config.get("openai_model", "gpt-4o-mini"))
+    elif engine == "claude":
+        from llm.claude import ClaudeLLM
+        return ClaudeLLM(api_key=config["anthropic_api_key"],
+                         model=config.get("anthropic_model", "claude-3-haiku-20240307"))
+    elif engine == "openrouter":
+        from llm.openrouter import OpenRouterLLM
+        return OpenRouterLLM(config)
+    elif engine == "gemini":
+        from llm.gemini import GeminiLLM
+        return GeminiLLM(api_key=config["gemini_api_key"],
+                         model=config.get("gemini_model", "gemini-2.0-flash"))
+    elif engine == "deepseek":
+        from llm.deepseek import DeepSeekLLM
+        return DeepSeekLLM(api_key=config["deepseek_api_key"],
+                           model=config.get("deepseek_model", "deepseek-chat"))
+    elif engine == "qwen":
+        from llm.qwen import QwenLLM
+        return QwenLLM(api_key=config["qwen_api_key"],
+                       model=config.get("qwen_model", "qwen-plus"))
+    else:
+        from llm.ollama import OllamaLLM
+        return OllamaLLM(model=config.get("ollama_model", "llama3"),
+                         base_url=config.get("ollama_base_url", "http://localhost:11434"))
+
+
+class VoiceTypeApp:
+    def __init__(self):
+        self.config = load_config()
+        self.indicator = MicIndicator()
+        self.injector = TextInjector()
+        self.stt = build_stt(self.config)
+        self.llm = build_llm(self.config)
+        self.recorder = AudioRecorder(level_callback=self._on_level)
+        self._recording_start: float = 0.0
+        self._active_mode: str = "ptt"
+        
+        hotkeys = {
+            "ptt": self.config.get("hotkey_ptt", "alt_r"),
+            "toggle": self.config.get("hotkey_toggle", "f13"),
+            "llm": self.config.get("hotkey_llm", "f14"),
+        }
+        self.hotkey_listener = HotkeyListener(
+            hotkey_configs=hotkeys,
+            on_start=self._on_start,
+            on_stop=self._on_stop,
+        )
+
+    def _on_level(self, level: float):
+        self.indicator.set_level(level)
+
+    def _on_start(self, mode: str):
+        self._recording_start = time.time()
+        self._active_mode = mode
+        print(f"[main] Recording started (mode: {mode})")
+        self.indicator.show()
+        self.indicator.set_state("recording")
+        self.recorder.start()
+
+    def _on_stop(self, mode: str):
+        # Determine recording duration early
+        duration = time.time() - self._recording_start
+        print(f"[main] Recording stopped (mode: {mode}), duration: {duration:.2f}s")
+        self.indicator.set_state("processing")
+        audio_bytes = self.recorder.stop()
+
+        # ── STT ──────────────────────────────────────────────────
+        stt_start = time.time()
+        raw_stt = self.stt.transcribe(audio_bytes, language=self.config.get("language", "zh"))
+        stt_text = _fix_punctuation(raw_stt)
+        stt_elapsed = time.time() - stt_start
+
+        if self.config.get("debug_mode"):
+            print(f"STT：{stt_text}（耗時：{stt_elapsed:.2f} 秒）")
+
+        # 自動學習詞彙（背景）
+        if stt_text:
+            try:
+                from vocab.manager import learn_from_text
+                threading.Thread(target=learn_from_text, args=(stt_text,), daemon=True).start()
+            except Exception:
+                pass
+
+        if not stt_text:
+            self.indicator.set_state("done")
+            time.sleep(0.4)
+            self.indicator.hide()
+            return
+
+        # ── 記憶上下文 ────────────────────────────────────────────
+        memory_context = ""
+        if self.config.get("memory_enabled", True):
+            try:
+                from memory.manager import get_context_for_llm
+                memory_context = get_context_for_llm()
+            except Exception:
+                pass
+
+        # ── LLM ──────────────────────────────────────────────────
+        final_text = stt_text
+        llm_elapsed = 0.0
+
+        # LLM if enabled OR if triggered by LLM-specific hotkey (mode="llm")
+        force_llm = (mode == "llm")
+        if self.llm and (self.config.get("llm_enabled") or force_llm):
+            if force_llm and self.config.get("debug_mode"):
+                print("[debug] Forced LLM triggered by hotkey")
+            
+            # 使用 is_refine=True 來減少記憶干擾
+            full_prompt = _build_llm_prompt(self.config, memory_context, is_refine=True)
+            llm_mode = self.config.get("llm_mode", "replace")
+
+            if llm_mode == "fast":
+                # 先注入 STT 原文，背景 LLM 潤飾後替換
+                self.indicator.set_state("done")
+                self.injector.inject(_fix_punctuation(stt_text))
+                time.sleep(0.4)
+                self.indicator.hide()
+
+                def _refine_and_replace(raw, prompt):
+                    t0 = time.time()
+                    refined = self.llm.refine(raw, prompt)
+                    elapsed = time.time() - t0
+                    if self.config.get("debug_mode"):
+                        print(f"LLM：{refined}（耗時：{elapsed:.2f} 秒）")
+                    if refined and refined != raw:
+                        # 避免 AI 只有回傳重複的指令、空值或是整個靈魂檔案內容
+                        soul_content = _load_soul()
+                        if (len(refined) < 2 and len(raw) > 5) or (soul_content and soul_content[:100] in refined):
+                             if self.config.get("debug_mode"):
+                                 print("[debug] LLM output rejected (possibly prompt leakage or invalid)")
+                             return
+                        fixed = _fix_punctuation(refined)
+                        self.injector.select_back(len(raw))
+                        self.injector.inject(fixed)
+                    # 記憶 & 統計
+                    self._post_process(raw, refined or raw, duration)
+
+                threading.Thread(
+                    target=_refine_and_replace,
+                    args=(stt_text, full_prompt),
+                    daemon=True
+                ).start()
+                return  # fast 模式在背景繼續，主流程結束
+
+            else:
+                # replace 模式：等 LLM 完成後注入
+                llm_start = time.time()
+                refined = self.llm.refine(stt_text, full_prompt)
+                llm_elapsed = time.time() - llm_start
+                if self.config.get("debug_mode"):
+                    print(f"LLM：{refined}（耗時：{llm_elapsed:.2f} 秒）")
+                if refined:
+                    final_text = refined
+
+        # ── 注入文字 ──────────────────────────────────────────────
+        self.indicator.set_state("done")
+        self.injector.inject(_fix_punctuation(final_text))
+        
+        # fallback: 複製到剪貼簿
+        try:
+            import pyperclip
+            pyperclip.copy(final_text)
+        except Exception:
+            pass
+
+        time.sleep(0.4)
+        self.indicator.hide()
+        
+        if self.config.get("debug_mode"):
+            print(f"[main] Injection done. Mode was: {mode}")
+
+        # ── 記憶 & 統計 ───────────────────────────────────────────
+        self._post_process(stt_text, final_text, duration)
+
+    def _post_process(self, stt_text: str, final_text: str, duration: float):
+        """錄音結束後：存記憶、存統計。"""
+        if self.config.get("memory_enabled", True):
+            try:
+                from memory.manager import add_entry
+                add_entry(stt_text, final_text)
+            except Exception as e:
+                print(f"[main] 記憶儲存失敗: {e}")
+
+        try:
+            from stats.tracker import record_session
+            record_session(duration, len(final_text))
+        except Exception as e:
+            print(f"[main] 統計儲存失敗: {e}")
+
+    def _on_toggle_llm(self):
+        self.config["llm_enabled"] = not self.config.get("llm_enabled", False)
+        save_config(self.config)
+        self.llm = build_llm(self.config)
+        print(f"[main] LLM enabled: {self.config['llm_enabled']}")
+
+    def _on_config_saved(self, new_config: dict):
+        """設定視窗儲存後，重新載入設定與模組。"""
+        self.config = new_config
+        self.stt = build_stt(self.config)
+        self.llm = build_llm(self.config)
+        
+        # 刷新快捷鍵監聽
+        self.hotkey_listener.stop()
+        hotkeys = {
+            "ptt": self.config.get("hotkey_ptt", "alt_r"),
+            "toggle": self.config.get("hotkey_toggle", "f13"),
+            "llm": self.config.get("hotkey_llm", "f14"),
+        }
+        self.hotkey_listener = HotkeyListener(
+            hotkey_configs=hotkeys,
+            on_start=self._on_start,
+            on_stop=self._on_stop,
+        )
+        self.hotkey_listener.start()
+        print("[main] Config & Hotkeys reloaded.")
+
+    def _on_quit(self):
+        self.hotkey_listener.stop()
+
+    def run(self):
+        # 檢查是否需要先開設定頁
+        from ui.settings_window import has_api_key
+        if not has_api_key(self.config):
+            print("[main] 未設定 API key，開啟設定視窗...")
+            from ui.settings_window import SettingsWindow
+
+            def _on_first_save(new_config):
+                self.config = new_config
+                self.stt = build_stt(self.config)
+                self.llm = build_llm(self.config)
+
+            # 在主線程啟動前先跑設定視窗（阻塞）
+            SettingsWindow(on_save=_on_first_save).run()
+
+        # 啟動指示器
+        self.indicator.start_app()
+
+        # 啟動熱鍵監聽
+        self.hotkey_listener.start()
+        print(f"[main] VoiceType started. Hotkey: {self.config.get('hotkey')}, "
+              f"Mode: {self.config.get('trigger_mode')}")
+
+        import rumps
+
+        # Menu bar（主線程，macOS 要求）
+        menu_bar = VoiceTypeMenuBar(
+            config=self.config,
+            on_quit=self._on_quit,
+            on_toggle_llm=self._on_toggle_llm,
+            on_config_saved=self._on_config_saved,
+        )
+
+        # ── 定時驅動 Qt 事件迴圈 (讓 MicIndicator 能夠顯示與更新) ──
+        # 因為 rumps 和 PyQt6 都需要主執行緒，我們用 rumps 的 timer 來驅動 Qt
+        @rumps.timer(0.05)
+        def drive_qt_events(_):
+            if self.indicator._app:
+                self.indicator._app.processEvents()
+
+        print("[main] GUI loops established. App is running.")
+        menu_bar.run()
+
+
+if __name__ == "__main__":
+    app = VoiceTypeApp()
+    app.run()

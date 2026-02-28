@@ -181,6 +181,8 @@ python main.py
 
 ## 支援與回饋
 
+![歡迎抖內](assets/donate-linepay.jpg)
+
 如果你覺得嘴炮輸入法對你有幫助，歡迎：
 
 - 在GitHub按顆星支持  

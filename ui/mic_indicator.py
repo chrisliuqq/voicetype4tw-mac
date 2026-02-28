@@ -6,13 +6,15 @@ Displays an animated waveform bar and current state text.
 import sys
 import threading
 from PyQt6.QtWidgets import QApplication, QWidget
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QUrl
 from PyQt6.QtGui import QPainter, QColor, QPen, QFont, QFontMetrics
+from PyQt6.QtMultimedia import QSoundEffect
 
 
 class _Signals(QObject):
     update_level = pyqtSignal(float)
     set_state = pyqtSignal(str)
+    play_beep = pyqtSignal()
     set_prefix = pyqtSignal(str)
     set_label_suffix = pyqtSignal(str)
     show_window = pyqtSignal()
@@ -36,6 +38,14 @@ class MicIndicatorWindow(QWidget):
         self._bars = [0.0] * 20  # rolling bar history
         self._flash_active = False
         self._setup_window()
+        
+        # 音效器
+        self._beep = QSoundEffect(self)
+        from pathlib import Path
+        beep_path = Path(__file__).parent.parent / "assets" / "beep.wav"
+        from PyQt6.QtCore import QUrl
+        self._beep.setSource(QUrl.fromLocalFile(str(beep_path.absolute())))
+        self._beep.setVolume(0.5)
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
@@ -189,6 +199,7 @@ class MicIndicator:
         self._signals.show_window.connect(on_show)
         self._signals.hide_window.connect(self._window.hide)
         self._signals.flash.connect(self._window.trigger_flash)
+        self._signals.play_beep.connect(self._window._beep.play)
         self._ready.set()
 
     def show(self):
@@ -218,3 +229,7 @@ class MicIndicator:
     def set_prefix(self, text: str):
         self._ready.wait()
         self._signals.set_prefix.emit(text)
+
+    def play_beep(self):
+        self._ready.wait()
+        self._signals.play_beep.emit()

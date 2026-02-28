@@ -47,6 +47,10 @@ cp /Library/Frameworks/Python.framework/Versions/3.12/lib/libssl.3.dylib dist/Vo
 cp /Library/Frameworks/Python.framework/Versions/3.12/lib/libcrypto.3.dylib dist/VoiceType4TW-Mac.app/Contents/Frameworks/libcrypto.3.dylib
 ```
 
+### ❌ 坑 5：MLX / MLX-Whisper 打包失敗
+`mlx` 是一個 Namespace Package，直接放進 py2app 的 `packages` 會導致 `ImportError`。
+**💡 解法**：在 `setup.py` 中將 `mlx` 放入 `includes` 而非 `packages`。同時確保 `mlx_whisper` 有正確包含。
+
 ---
 
 ## 3. UI 與前端交互細節 (PyQt6)
@@ -171,10 +175,15 @@ Windows 平台完全支援 `faster-whisper`。若使用者具備 NVIDIA 顯卡�
 5. 不複製 SSL 也不簽名 → `_ssl.so` 找不到 libssl，Launch error
 6. 只簽 dylib 不簽 bundle → TCC 仍撤銷
 7. 由內而外逐一簽名 → `libxcb.1.1.0.dylib` 格式不支援簽名，阻止整個流程
+8. **(2026-03-01 更新)**：重新打包後 macOS TCC 偵測到 App Identity 變化，會自動關閉「輔助功能」開關。若此時強制開啟麥克風，會因為標籤失效而導致 `Abort trap: 6` (音訊緩衝區錯誤導致閃退)。
 
 ### 🔮 下次要嘗試的方向（優先順序）
 
-**方向 D（最佳）: install_name_tool 修改 _ssl.so 的連結路徑**
+**方向 D（最佳）: 導入 entitlements.plist + 手動清理 TCC 紀錄**
+1. 建立 `entitlements.plist` 加入 `com.apple.security.device.microphone` 與 `com.apple.security.automation.apple-events`。
+2. 打包後指導使用者使用 `tccutil reset Accessibility` 或手動在系統設定中按「減號 (-)」刪除該 App 的所有權限紀錄。讓系統視其為「全新品」重新請求授權，可解決指紋衝突。
+
+**方向 A: install_name_tool 修改 _ssl.so 的連結路徑**
 讓 `_ssl.so` 直接從 `/Library/Frameworks/Python.framework/.../lib/` 載入 libssl，不需要複製到 bundle → 簽名保持完整 → TCC 不撤銷
 
 **方向 A: 排除問題 dylib + 自簽憑證**

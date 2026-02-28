@@ -131,12 +131,46 @@ macOS本地語音輸入工具，按下快捷鍵開始講話，系統自動幫你
 
 ---
 
-## 安裝
+## 🚀 一鍵安裝（推薦）
+
+打開終端機，貼上這行指令就搞定：
 
 ```bash
-# 建議使用 Python 3.11+
-pip install -r requirements.txt
+curl -fsSL https://raw.githubusercontent.com/jfamily4tw/voicetype4tw-mac/main/install.sh | bash
 ```
+
+腳本會自動幫你完成：Homebrew → Python → 音訊套件 → 下載專案 → 建立虛擬環境 → 安裝依賴 → 建立啟動捷徑
+
+安裝完成後，以後每次只要：
+
+```bash
+cd ~/VoiceType4TW-Mac && bash start.sh
+```
+
+---
+
+## 手動安裝
+
+如果你想自己來，也可以手動操作：
+
+```bash
+# 1. Clone 專案
+git clone https://github.com/jfamily4tw/voicetype4tw-mac.git
+cd voicetype4tw-mac
+
+# 2. 建立虛擬環境
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. 安裝依賴
+pip install -r requirements.txt
+
+# 4. 啟動
+python main.py
+```
+
+> ⚠️ 首次執行時，macOS 會詢問你是否允許「終端機」使用麥克風與輔助使用權限，請務必允許。  
+> 路徑：系統設定 → 隱私權與安全性 → 麥克風 / 輔助使用
 
 ---
 
@@ -145,10 +179,10 @@ pip install -r requirements.txt
 編輯 `config.json`：
 
 | 欄位            | 說明                                                | 預設值          |
-|-----------------|-----------------------------------------------------|-----------------|
+|-----------------|-----------------------------------------------------|-----------------| 
 | `hotkey`        | 快捷鍵(right_option / right_shift / right_ctrl / f13-f15) | `right_option` |
 | `trigger_mode`  | 觸發模式(push_to_talk / toggle)                    | `push_to_talk`  |
-| `stt_engine`    | 語音引擎(local_whisper / groq)                     | `local_whisper` |
+| `stt_engine`    | 語音引擎(local_whisper / mlx_whisper / groq)       | `local_whisper` |
 | `whisper_model` | Whisper模型大小(tiny/base/small/medium/large)      | `medium`        |
 | `groq_api_key`  | Groq API Key(使用groq引擎時填入)                  | `""`            |
 | `llm_enabled`   | 是否啟用AI文字潤飾                                 | `false`         |
@@ -157,25 +191,11 @@ pip install -r requirements.txt
 
 ---
 
-## 執行
-
-```bash
-python main.py
-```
-
-首次執行需在：
-
-> 系統設定 > 隱私權與安全性 > 輔助使用  
-
-將終端機(或你使用的執行工具)加入允許清單，讓程式可以模擬鍵盤輸入
-
----
-
 ## 系統需求
 
 - macOS 12+  
-- Python 3.11+  
-- Apple Silicon 或 Intel Mac  
+- Python 3.10+  
+- Apple Silicon（推薦，可用 MLX 加速）或 Intel Mac  
 
 ---
 

@@ -1,13 +1,29 @@
-faster-whisper>=1.0.0
-mlx-whisper>=0.4.0
-groq>=0.4.0
-openai>=1.0.0
-anthropic>=0.20.0
-pynput>=1.7.6
-sounddevice>=0.4.6
-numpy>=1.24.0
-pyperclip>=1.8.2
-PyQt6>=6.6.0
+# VoiceType4TW-Mac 依賴清單
+# 使用方式: pip install -r requirements.txt
+
+# === 核心 ===
+PyQt6>=6.6
 rumps>=0.4.0
-requests>=2.31.0
-google-generativeai>=0.5.0
+sounddevice>=0.4.6
+pynput>=1.7.6
+pyperclip>=1.8.2
+httpx>=0.25
+certifi
+
+# === 語音辨識引擎 ===
+faster-whisper>=1.0
+numpy
+
+# === MLX (Apple Silicon 加速, 選用) ===
+mlx>=0.20
+mlx-whisper>=0.4
+
+# === LLM (選用) ===
+openai>=1.0
+
+# === macOS 框架橋接 ===
+pyobjc-core
+pyobjc-framework-Cocoa
+pyobjc-framework-Quartz
+pyobjc-framework-ApplicationServices
+pyobjc-framework-CoreText

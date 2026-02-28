@@ -18,6 +18,8 @@ DATA_FILES = [
 # Using includes instead of packages for core libs can sometimes help
 OPTIONS = {
     'argv_emulation': False,
+    'arch': 'arm64',
+    'strip': False,      # 禁止 py2app strip dylib，避免截斷導致 codesign 失敗
     'iconfile': 'assets/icon.icns',
     'plist': {
         'LSUIElement': False, # 暫時顯示 Dock 圖示以確保 TCC 權限攔截順利

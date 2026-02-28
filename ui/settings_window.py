@@ -23,7 +23,7 @@ WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
 TRIGGER_MODES = ["push_to_talk", "toggle"]
 HOTKEYS = ["right_option", "left_option", "right_ctrl", "f13", "f14", "f15"]
 LLM_MODES = ["replace", "fast"]
-BUILD_ID = "BUILD-0228-GOLD"  # 每次打包前更新這個字串，確認跑的是新版
+BUILD_ID = "BUILD-0301"  # 每次打包前更新這個字串，確認跑的是新版
 
 from hotkey.listener import key_to_str, str_to_key
 
@@ -395,7 +395,7 @@ class SettingsWindow(QMainWindow):
         sidebar_layout.addStretch()
         
         # Credits and SNS at Bottom
-        credit_box = QLabel(f"v2.3.0 Pro | {BUILD_ID}\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
+        credit_box = QLabel(f"v2.4.0 Pro | {BUILD_ID}\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
         credit_box.setStyleSheet("color: #555; font-size: 10px; margin-left: 25px; line-height: 1.2;")
         sidebar_layout.addWidget(credit_box)
         
@@ -618,7 +618,17 @@ class SettingsWindow(QMainWindow):
         self.groq_key = self._add_grid_row(layout, "Groq API Key (選填)", QLineEdit())
         self.groq_key.setEchoMode(QLineEdit.EchoMode.Password)
         
-        self.language = self._add_grid_row(layout, "優先辨識語言", QLineEdit())
+        self.language = self._add_grid_row(layout, "優先辨識語言", QComboBox())
+        lang_meta = {
+            "zh": "繁體中文",
+            "en": "英文",
+            "ja": "日文",
+            "ko": "韓文",
+            "yue": "粵語",
+            "auto": "自動偵測"
+        }
+        for code, name in lang_meta.items():
+            self.language.addItem(f"{name} ({code})", code)
 
         layout.addWidget(self._page_section_header("🤖 大語言模型潤飾 (LLM) 配置"))
         self.llm_enabled = QCheckBox("啟用高階智慧潤飾與翻譯")
@@ -789,7 +799,12 @@ class SettingsWindow(QMainWindow):
         else:
             self.whisper_model.setCurrentText(m_val) # fallback
         self.groq_key.setText(self.config.get("groq_api_key", ""))
-        self.language.setText(self.config.get("language", "zh"))
+        lang_val = self.config.get("language", "zh")
+        lang_idx = self.language.findData(lang_val)
+        if lang_idx >= 0:
+            self.language.setCurrentIndex(lang_idx)
+        else:
+            self.language.setCurrentText(lang_val)
         self.llm_enabled.setChecked(self.config.get("llm_enabled", False))
         self.llm_engine.setCurrentText(self.config.get("llm_engine", "ollama"))
         self.llm_mode.setCurrentText(self.config.get("llm_mode", "replace"))
@@ -979,7 +994,7 @@ class SettingsWindow(QMainWindow):
         # 使用 currentData 取得內部代號如 "medium" 而非顯示文字
         self.config["whisper_model"] = self.whisper_model.currentData() or self.whisper_model.currentText()
         self.config["groq_api_key"] = self.groq_key.text().strip()
-        self.config["language"] = self.language.text().strip()
+        self.config["language"] = self.language.currentData() or self.language.currentText()
         self.config["llm_enabled"] = self.llm_enabled.isChecked()
         self.config["llm_engine"] = self.llm_engine.currentText()
         self.config["llm_mode"] = self.llm_mode.currentText()

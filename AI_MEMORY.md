@@ -134,17 +134,57 @@ Windows 平台完全支援 `faster-whisper`。若使用者具備 NVIDIA 顯卡�
 
 ---
 
-## 10. macOS 權限偵測與封裝環境的窘境 (The Permission Detection Dilemma)
+## 10. macOS 權限偵測 — 已驗證的正確做法 (2026-02-28 深度除錯)
 
-### ❌ 窘境描述 (Dilemma)
-即便在 macOS 「系統設定」中手動開啟了錄音、輔助功能、輸入監控等權限，打包後的 `.app` 版（如 v2.2.1/2.2.2）往往無法正確在 Dashboard 反映綠燈，燈號始終卡在紅燈。主要原因包含：
-1. **框架缺失**: `py2app` 打包時若未明確指定 `packages=['objc', 'AVFoundation', 'ApplicationServices']`，則 App 內部無法直接與 macOS TCC (Transparency, Consent, and Control) 框架溝通。
-2. **誘發機制 (Inducement)**: App 若從未主動嘗試錄音，不會出現在系統權限清單中。單純靠熱鍵監聽有時無法觸發系統授權視窗，導致使用者在清單中找不到項目。
+### 權限偵測 API 正確用法（經驗證）
 
-### ✅ 目前進展與解決策略
-1. **強制打包 Framework**: 在 `setup.py` 的 `packages` 中顯式加入 macOS 核心套件（`objc`, `AVFoundation`, `ApplicationServices`）。
-2. **主動敲門 (Triggering)**: 設定視窗啟動後，延遲 1 秒發起一次輕量級的麥克風預檢 (Pre-flight) 請求，主動誘發系統顯示授權視窗。
-3. **動態偵測優化**: 在 `ui/settings_window.py` 改用更標準、直接的 `import` 方式載入系統框架，避免使用動態 `loadBundle` 引發的路徑黑箱。
-4. **實時監控**: 使用 `QTimer` 每 2 秒掃描一次權限狀態，讓使用者在系統設定中完成授權後，Dashboard 燈號能立即轉為綠色，無需重新啟動 App。
+- **輔助功能**: 用 `ctypes.cdll.LoadLibrary('ApplicationServices.framework/ApplicationServices')` 呼叫 `AXIsProcessTrusted()`（C 函數，不是 ObjC）
+- **麥克風**: 用 `objc.loadBundle('AVFoundation', ...)` 取得 `AVCaptureDevice`，呼叫 `authorizationStatusForMediaType_('soun')`
+- **錯誤做法**: `import ApplicationServices` 和 `from AVFoundation import ...` 在打包環境不存在，會直接炸。也不能放進 `setup.py` 的 `packages`
+- **無限彈窗陷阱**: 定時器 + `requestAccessForMediaType_completionHandler_` = 每次呼叫都彈窗。改為只檢查一次，不主動要求授權
 
-**開發者註記**：遇到此窘境時，優先檢查 `setup.py` 的打包框架是否完整，並利用 `tccutil reset All [BundleID]` 進行乾淨的重新授權測試。
+### LOG 調試機制
+- `main.py` 使用 `logging` 模組，日誌寫入 `~/Library/Application Support/VoiceType4TW/debug.log`
+- `settings_window.py` 的 `BUILD_ID` 常數可快速確認打包版本（例如 `BUILD-0228N5`）
+- 權限結果記錄為 `[PERM] Accessibility: True/False`
+
+### pynput 全域熱鍵須知
+- pynput 在 macOS 依賴 `Quartz` (pyobjc) 建立 Event Tap → 必須加入 `packages`
+- pynput 只在啟動時呼叫一次 `AXIsProcessTrusted()`
+- False → 退化為本地監聽（只在自己視窗有效），即使之後授權也要重啟 App
+
+---
+
+## 11. 🔴 未解決：macOS 代碼簽名 vs TCC 的致命衝突
+
+### 問題
+每次啟動 `.app`，macOS 自動關閉「輔助功能」開關 → 全域熱鍵失效。
+
+### 根因
+`py2app` 建置時自動簽名 → 手動複製 `libssl.3.dylib` + `libcrypto.3.dylib` → 簽名失效 → macOS TCC 偵測 cdhash 不符 → 撤銷權限。任何對 bundle 的修改都會觸發此問題。
+
+### 已嘗試但失敗的方法
+1. `codesign --force --deep --sign -` → 每次產生新 cdhash,  TCC 不認
+2. 自簽憑證 (GUI + openssl) → `CSSMERR_TP_NOT_TRUSTED`，無法成為 valid identity
+3. `codesign --remove-signature` → macOS 拒絕啟動（Error 163）
+4. `setup.py` 的 `frameworks` 選項 → py2app Launch error
+5. 不複製 SSL 也不簽名 → `_ssl.so` 找不到 libssl，Launch error
+6. 只簽 dylib 不簽 bundle → TCC 仍撤銷
+7. 由內而外逐一簽名 → `libxcb.1.1.0.dylib` 格式不支援簽名，阻止整個流程
+
+### 🔮 下次要嘗試的方向（優先順序）
+
+**方向 D（最佳）: install_name_tool 修改 _ssl.so 的連結路徑**
+讓 `_ssl.so` 直接從 `/Library/Frameworks/Python.framework/.../lib/` 載入 libssl，不需要複製到 bundle → 簽名保持完整 → TCC 不撤銷
+
+**方向 A: 排除問題 dylib + 自簽憑證**
+刪除 `libxcb.1.1.0.dylib`（X11，macOS 不需要）和 `liblcms2.2.dylib`，再用自簽憑證簽名
+
+**方向 B: 深入調查 frameworks 選項崩潰原因**
+查看 py2app 的啟動日誌找出 Launch error 的具體原因
+
+**方向 C: 改用 PyInstaller**
+PyInstaller 有 `--codesign-identity` 選項，可能更成熟
+
+**方向 E: Apple Developer ID（USD 99/年）**
+正式 Developer ID + Notarization = 一勞永逸

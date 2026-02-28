@@ -23,7 +23,7 @@ WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
 TRIGGER_MODES = ["push_to_talk", "toggle"]
 HOTKEYS = ["right_option", "left_option", "right_ctrl", "f13", "f14", "f15"]
 LLM_MODES = ["replace", "fast"]
-BUILD_ID = "BUILD-0228N3"  # 每次打包前更新這個字串，確認跑的是新版
+BUILD_ID = "BUILD-0228N5"  # 每次打包前更新這個字串，確認跑的是新版
 
 from hotkey.listener import key_to_str, str_to_key
 

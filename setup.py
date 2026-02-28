@@ -33,10 +33,6 @@ OPTIONS = {
         'NSSupportsAutomaticGraphicsSwitching': True,
         'NSHighResolutionCapable': True,
     },
-    'frameworks': [
-        '/Library/Frameworks/Python.framework/Versions/3.12/lib/libssl.3.dylib',
-        '/Library/Frameworks/Python.framework/Versions/3.12/lib/libcrypto.3.dylib',
-    ],
     'packages': ['rumps', 'PyQt6', 'faster_whisper', 'pynput', 'pyperclip', 'sounddevice', '_sounddevice_data', 'httpx', 'certifi', 'objc', 'Quartz'],
     'includes': ['numpy'],
     'excludes': ['tkinter', 'unittest'],

@@ -154,6 +154,50 @@ class HotkeyRecorderButton(QPushButton):
         self._update_text()
 
 
+class PermissionLight(QWidget):
+    def __init__(self, label_text, preference_url):
+        super().__init__()
+        self.url = preference_url
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 5, 0, 5)
+
+        self.dot = QFrame()
+        self.dot.setFixedSize(12, 12)
+        self.dot.setStyleSheet("background-color: #555; border-radius: 6px;")
+        layout.addWidget(self.dot)
+
+        self.label = QLabel(label_text)
+        self.label.setStyleSheet("color: #e2e4e7; font-size: 14px;")
+        layout.addWidget(self.label)
+
+        layout.addStretch()
+
+        self.fix_btn = QPushButton("設定")
+        self.fix_btn.setFixedWidth(60)
+        self.fix_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2d333d;
+                color: #8a8d91;
+                font-size: 11px;
+                padding: 2px 5px;
+            }
+            QPushButton:hover { background-color: #3d4452; color: #fff; }
+        """)
+        self.fix_btn.clicked.connect(self._open_preference)
+        layout.addWidget(self.fix_btn)
+
+    def _open_preference(self):
+        import subprocess
+        subprocess.run(["open", self.url])
+
+    def set_status(self, authorized: bool):
+        color = "#00e676" if authorized else "#ff5252"
+        self.dot.setStyleSheet(f"background-color: {color}; border-radius: 6px;")
+        status_text = " (已授權)" if authorized else " (未授權)"
+        # Note: We keep the original label text and just update the color dot
+        self.fix_btn.setVisible(not authorized)
+
+
 class SettingsWindow(QMainWindow):
     def __init__(self, on_save=None, start_page=0):
         super().__init__()
@@ -166,17 +210,22 @@ class SettingsWindow(QMainWindow):
         # 根據語言動態設定視窗標題
         lang = self.config.get("language", "zh")
         if "zh" in lang:
-            self.setWindowTitle("嘴砲輸入法 2.2.1 Pro")
+            self.setWindowTitle("嘴砲輸入法 2.2.2 Pro")
         else:
-            self.setWindowTitle("VoiceType4TW Mac 2.2.1 Pro")
+            self.setWindowTitle("VoiceType4TW Mac 2.2.2 Pro")
         
         # 設定啟動頁面
         if 0 <= start_page < len(self.sidebar_buttons):
             # 延遲一點點執行，避免在 UI 還沒完全掛載時觸發 visibility 切換
             QTimer.singleShot(10, lambda: self._on_sidebar_changed(start_page))
+        
+        # 定期檢查權限狀態
+        self.perm_timer = QTimer(self)
+        self.perm_timer.timeout.connect(self._check_all_permissions)
+        self.perm_timer.start(2000) # 每 2 秒檢查一次
 
     def _setup_ui(self):
-        self.setWindowTitle("VoiceType4TW Mac 2.2.1 Pro")
+        self.setWindowTitle("VoiceType4TW Mac 2.2.2 Pro")
         self.setMinimumSize(900, 680)
         
         # Premium CSS
@@ -319,7 +368,7 @@ class SettingsWindow(QMainWindow):
         sidebar_layout.addStretch()
         
         # Credits and SNS at Bottom
-        credit_box = QLabel("v2.2.1 Pro\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
+        credit_box = QLabel("v2.2.2 Pro\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
         credit_box.setStyleSheet("color: #555; font-size: 10px; margin-left: 25px; line-height: 1.2;")
         sidebar_layout.addWidget(credit_box)
         
@@ -416,10 +465,26 @@ class SettingsWindow(QMainWindow):
         dash_header_v.addLayout(dash_header)
         layout.addWidget(dash_header_container)
 
-        # Top Cards Row
-        cards_row = QHBoxLayout()
+        # Top Cards: Row 1
+        cards_row1 = QHBoxLayout()
         
-        # Status Card
+        # 1. Permission Card
+        perm_card = GlassCard()
+        p_layout = QVBoxLayout(perm_card)
+        p_layout.setContentsMargins(20, 20, 20, 20)
+        p_layout.addWidget(QLabel("權限驗證 (macOS 隱私)"))
+        
+        self.light_acc = PermissionLight("輔助功能 (Accessibility)", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        p_layout.addWidget(self.light_acc)
+        
+        self.light_input = PermissionLight("輸入監聽 (Input Monitoring)", "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
+        p_layout.addWidget(self.light_input)
+        
+        self.light_mic = PermissionLight("麥克風 (Microphone)", "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
+        p_layout.addWidget(self.light_mic)
+        cards_row1.addWidget(perm_card)
+
+        # 2. Status Card
         status_card = GlassCard()
         status_layout = QVBoxLayout(status_card)
         status_layout.setContentsMargins(20, 20, 20, 20)
@@ -432,10 +497,14 @@ class SettingsWindow(QMainWindow):
         self.lbl_status_stt = QLabel("引擎: Local Whisper (Medium)")
         self.lbl_status_stt.setStyleSheet("color: #888; font-size: 13px;")
         status_layout.addWidget(self.lbl_status_stt)
-        
-        cards_row.addWidget(status_card)
+        cards_row1.addWidget(status_card)
 
-        # Quick Stats Card
+        layout.addLayout(cards_row1)
+
+        # Bottom Cards: Row 2
+        cards_row2 = QHBoxLayout()
+
+        # 3. Quick Stats Card
         stats_card = GlassCard()
         sq_layout = QVBoxLayout(stats_card)
         sq_layout.setContentsMargins(20, 20, 20, 20)
@@ -445,9 +514,9 @@ class SettingsWindow(QMainWindow):
         sq_layout.addWidget(self.lbl_today_count)
         self.lbl_today_chars = QLabel("錄製約 0 字")
         sq_layout.addWidget(self.lbl_today_chars)
-        cards_row.addWidget(stats_card)
+        cards_row2.addWidget(stats_card)
 
-        # Time Saved Card
+        # 4. Time Saved Card
         time_card = GlassCard()
         t_layout = QVBoxLayout(time_card)
         t_layout.setContentsMargins(20, 20, 20, 20)
@@ -458,9 +527,9 @@ class SettingsWindow(QMainWindow):
         self.lbl_total_chars_desc = QLabel("共辨識 0 字")
         self.lbl_total_chars_desc.setStyleSheet("color: #888; font-size: 13px;")
         t_layout.addWidget(self.lbl_total_chars_desc)
-        cards_row.addWidget(time_card)
+        cards_row2.addWidget(time_card)
         
-        layout.addLayout(cards_row)
+        layout.addLayout(cards_row2)
 
         # Recent Activity Card
         recent_card = GlassCard()
@@ -672,6 +741,49 @@ class SettingsWindow(QMainWindow):
         
         eng = self.config.get("stt_engine", "local_whisper")
         self.lbl_status_stt.setText(f"引擎: {eng.upper()}")
+        
+        # 啟動時試探性要求麥克風權限，確保出現在系統清單中
+        QTimer.singleShot(1000, self._request_mic_permission)
+        self._check_all_permissions()
+
+    def _request_mic_permission(self):
+        """主動試探麥克風，誘發 macOS 彈出權限請求視窗"""
+        try:
+            import objc
+            objc.loadBundle('AVFoundation', bundle_path='/System/Library/Frameworks/AVFoundation.framework', module_globals=globals())
+            # 只有在尚未授權時才主動要求紀錄
+            if AVCaptureDevice.authorizationStatusForMediaType_('soun') == 0:
+                 AVCaptureDevice.requestAccessForMediaType_completionHandler_('soun', lambda granted: None)
+        except:
+            pass
+
+    def _check_all_permissions(self):
+        import objc
+        # 1. Check Accessibility
+        trusted = False
+        try:
+            if 'AXIsProcessTrusted' not in globals():
+                objc.loadBundle('ApplicationServices', bundle_path='/System/Library/Frameworks/ApplicationServices.framework', module_globals=globals())
+            trusted = AXIsProcessTrusted()
+        except:
+            trusted = False
+        self.light_acc.set_status(trusted)
+
+        # 2. Check Input Monitoring (通常與輔助功能同步，或需 TCC 檢查)
+        # 在一般 Ad-hoc 簽名下，只要 Accessibility 過了，輸入監控通常也會過
+        self.light_input.set_status(trusted) 
+
+        # 3. Check Microphone
+        mic_ok = False
+        try:
+            if 'AVCaptureDevice' not in globals():
+                objc.loadBundle('AVFoundation', bundle_path='/System/Library/Frameworks/AVFoundation.framework', module_globals=globals())
+            # status: 0=NotDetermined, 1=Restricted, 2=Denied, 3=Authorized
+            status = AVCaptureDevice.authorizationStatusForMediaType_('soun')
+            mic_ok = (status == 3)
+        except:
+            mic_ok = False
+        self.light_mic.set_status(mic_ok)
 
     def _refresh_vocab(self):
         self.vocab_list.clear()

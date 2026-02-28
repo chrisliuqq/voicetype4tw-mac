@@ -416,27 +416,30 @@ class VoiceTypeApp:
         self.hotkey_listener.stop()
 
     def run(self):
-        # 檢查是否需要先開設定頁
-        from ui.settings_window import has_api_key
-        if not has_api_key(self.config):
-            print("[main] 未設定 API key，開啟設定視窗...")
-            from ui.settings_window import SettingsWindow
-
-            def _on_first_save(new_config):
-                self.config = new_config
-                self.stt = build_stt(self.config)
-                self.llm = build_llm(self.config)
-
-            # 在主線程啟動前先跑設定視窗（阻塞）
-            SettingsWindow(on_save=_on_first_save).run()
-
-        # 啟動指示器
+        # 1. 啟動指示器底層 (初始化 QApplication)
         self.indicator.start_app()
 
-        # 啟動熱鍵監聽
+        # 2. 初始化設定視窗 (先不 show，等 loop)
+        from ui.settings_window import has_api_key, SettingsWindow
+        start_page = 0 if has_api_key(self.config) else 4
+
+        def _on_init_save(new_config):
+            self.config = new_config
+            self.stt = build_stt(self.config)
+            self.llm = build_llm(self.config)
+
+        self.startup_settings = SettingsWindow(on_save=_on_init_save, start_page=start_page)
+        
+        # 用 QTimer 延遲 show 視窗，避開 rumps 啟動時的 Mach Port 衝突 (閃退主因)
+        from PyQt6.QtCore import QTimer
+        def delayed_show():
+            self.startup_settings.show()
+            self.startup_settings.raise_()
+        
+        QTimer.singleShot(500, delayed_show)
+
+        # 3. 啟動熱鍵監聽
         self.hotkey_listener.start()
-        print(f"[main] VoiceType started. Hotkey: {self.config.get('hotkey')}, "
-              f"Mode: {self.config.get('trigger_mode')}")
 
         import rumps
 

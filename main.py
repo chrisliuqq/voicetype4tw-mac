@@ -196,6 +196,15 @@ class VoiceTypeApp:
         self.indicator.set_state("recording")
         
         # 播放提示音，讓使用者知道可以開始講話了
+        if self.beep_sound is None:
+            try:
+                self.beep_sound = QSoundEffect()
+                beep_path = Path(__file__).parent / "assets" / "beep.wav"
+                self.beep_sound.setSource(QUrl.fromLocalFile(str(beep_path)))
+                self.beep_sound.setVolume(0.5)
+            except Exception as e:
+                print(f"[main] Warning: Failed to init beep sound: {e}")
+
         if self.beep_sound:
             self.beep_sound.play()
         
@@ -445,14 +454,8 @@ class VoiceTypeApp:
         self.hotkey_listener.stop()
 
     def run(self):
-        # 1. 啟拾指示器底層 (初始化 QApplication)
+        # 1. 啟動指示器底層 (初始化 QApplication)
         self.indicator.start_app()
-
-        # 初始化提示音
-        self.beep_sound = QSoundEffect()
-        beep_path = Path(__file__).parent / "assets" / "beep.wav"
-        self.beep_sound.setSource(QUrl.fromLocalFile(str(beep_path)))
-        self.beep_sound.setVolume(0.5)
 
         # 2. 初始化設定視窗 (先不 show，等 loop)
         from ui.settings_window import has_api_key, SettingsWindow

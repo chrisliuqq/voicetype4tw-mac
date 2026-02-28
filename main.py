@@ -443,8 +443,6 @@ class VoiceTypeApp:
     def _on_config_saved(self, new_config: dict):
         """設定視窗儲存後，重新載入設定與模組。"""
         self.config = new_config
-        self.stt = build_stt(self.config)
-        self.llm = build_llm(self.config)
         
         # 刷新快捷鍵監聽
         self.hotkey_listener.stop()
@@ -460,6 +458,15 @@ class VoiceTypeApp:
         )
         self.hotkey_listener.start()
         print("[main] Config & Hotkeys reloaded.")
+        
+        # 為了避免在主執行緒載入龐大模型造成卡死/崩潰，切換為背景載入
+        self._models_ready = False
+        self.indicator.set_state("loading")
+        self.indicator.show()
+        
+        import threading
+        load_thread = threading.Thread(target=self._load_models_async, daemon=True)
+        load_thread.start()
 
     def _on_quit(self):
         self.hotkey_listener.stop()

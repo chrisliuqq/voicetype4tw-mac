@@ -167,7 +167,7 @@ class SettingsWindow(QMainWindow):
         # 根據語言動態設定視窗標題
         lang = self.config.get("language", "zh")
         if "zh" in lang:
-            self.setWindowTitle("嘴炮輸入法 2.2 Pro")
+            self.setWindowTitle("嘴砲輸入法 2.2 Pro")
         else:
             self.setWindowTitle("VoiceType4TW Mac 2.2 Pro")
         
@@ -406,7 +406,7 @@ class SettingsWindow(QMainWindow):
         
         dash_header.addStretch()
         
-        title_cn = QLabel("嘴炮輸入法")
+        title_cn = QLabel("嘴砲輸入法")
         title_cn.setStyleSheet("font-family: 'Taipei Sans TC Beta'; font-size: 32px; font-weight: bold; color: #ffffff;")
         dash_header.addWidget(title_cn)
         
@@ -784,7 +784,7 @@ class SettingsWindow(QMainWindow):
         except: pass
 
         save_config(self.config)
-        QMessageBox.information(self, "嘴炮輸入法", "設定已儲存並生效。")
+        QMessageBox.information(self, "嘴砲輸入法", "設定已儲存並生效。")
         if self.on_save: self.on_save(self.config)
         self.close()
 

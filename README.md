@@ -1,4 +1,4 @@
-# VoiceType4TW - Mac 嘴炮輸入法
+# VoiceType4TW - Mac 嘴砲輸入法
 
 主要開發者：吉米丘  
 協助開發者：Gemini、Nebula  
@@ -12,7 +12,7 @@ macOS本地語音輸入工具，按下快捷鍵開始講話，系統自動幫你
 ![Dashboard](assets/screenshot-01.png)
 
 靈感來自TypeLess這類語音輸入工具，但因為授權限制與雲端依賴，我就想：能不能做一套「完全可以在本地端自己掌握」的語音輸入工具  
-於是就結合Apple Silicon的本地Whisper能力，再加上Gemini、Nebula等AI夥伴，一起打造出這套專為Mac打造的VoiceType4TW，也就是嘴炮輸入法
+於是就結合Apple Silicon的本地Whisper能力，再加上Gemini、Nebula等AI夥伴，一起打造出這套專為Mac打造的VoiceType4TW，也就是嘴砲輸入法
 
 ---
 
@@ -183,7 +183,7 @@ python main.py
 
 <img src="assets/donate-linepay.jpg" alt="歡迎抖內" width="200" />
 
-如果你覺得嘴炮輸入法對你有幫助，歡迎：
+如果你覺得嘴砲輸入法對你有幫助，歡迎：
 
 - 在GitHub按顆星支持  
 - 分享給身邊常需要打字、開會做紀錄、寫文件的朋友  

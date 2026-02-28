@@ -95,7 +95,10 @@ def _build_llm_prompt(config: dict, memory_context: str = "", is_refine: bool = 
 
 def build_stt(config: dict):
     engine = config.get("stt_engine", "local_whisper")
-    if engine == "groq":
+    if engine == "mlx_whisper":
+        from stt.mlx_whisper import MLXWhisperSTT
+        return MLXWhisperSTT(model_size=config.get("whisper_model", "medium"))
+    elif engine == "groq":
         from stt.groq_whisper import GroqWhisperSTT
         return GroqWhisperSTT(api_key=config["groq_api_key"])
     elif engine == "gemini":

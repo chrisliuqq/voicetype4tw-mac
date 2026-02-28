@@ -17,7 +17,7 @@ from PyQt6.QtGui import QFont, QIcon, QColor, QPainter, QLinearGradient, QBrush,
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import load_config, save_config
 from paths import SOUL_PATH
-STT_ENGINES = ["local_whisper", "groq", "gemini", "openrouter"]
+STT_ENGINES = ["local_whisper", "mlx_whisper", "groq", "gemini", "openrouter"]
 LLM_ENGINES = ["ollama", "openai", "claude", "openrouter", "gemini", "deepseek", "qwen"]
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
 TRIGGER_MODES = ["push_to_talk", "toggle"]

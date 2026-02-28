@@ -49,10 +49,6 @@ class HotkeyListener:
         self.on_start = on_start
         self.on_stop = on_stop
         
-        # Map pynput key objects to their respective modes
-        self.key_map = {}
-        self._refresh_key_map()
-        
         self._active_mode: Optional[str] = None
         self._listener: Optional[keyboard.Listener] = None
 
@@ -65,6 +61,7 @@ class HotkeyListener:
 
     def start(self) -> None:
         """Start the global keyboard listener in a background thread."""
+        self._refresh_key_map()
         self._listener = keyboard.Listener(
             on_press=self._on_press,
             on_release=self._on_release,

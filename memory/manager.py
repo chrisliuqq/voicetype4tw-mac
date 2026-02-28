@@ -10,7 +10,9 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional
 
-DATA_DIR = Path(__file__).parent
+from paths import get_data_dir
+
+DATA_DIR = get_data_dir("memory")
 MEMORY_PATH = DATA_DIR / "memory.json"
 ARCHIVE_DIR = DATA_DIR / "archive"
 

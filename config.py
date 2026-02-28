@@ -37,9 +37,7 @@ DEFAULT_CONFIG = {
     # 其他
     "auto_paste": True,
 }
-
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
-
+from paths import CONFIG_PATH
 
 def load_config() -> dict:
     """Load config from config.json, falling back to defaults for missing keys."""

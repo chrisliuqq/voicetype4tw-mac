@@ -7,7 +7,9 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 
-DATA_DIR = Path(__file__).parent.parent / "memory"
+from paths import get_data_dir
+
+DATA_DIR = get_data_dir("stats")
 STATS_PATH = DATA_DIR / "stats.json"
 
 

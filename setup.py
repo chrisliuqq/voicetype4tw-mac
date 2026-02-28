@@ -7,8 +7,8 @@ sys.setrecursionlimit(5000)
 APP = ['main.py']
 DATA_FILES = [
     'assets',
-    # 'soul.md',       # 不打包個人化提示詞，保護隱私
-    # 'config.json',   # 不打包 API Key，避免洩漏
+    'soul.md',       # 會在首次啟動時複製到 Library/Application Support 避免打包後唯讀
+    'config.json',   # 會在首次啟動時複製到 Library/Application Support 避免打包後唯讀
     # 'memory',        # 不打包對話記憶
     # 'vocab',         # 不打包個人詞庫
     # 'stats'          # 不打包統計資料

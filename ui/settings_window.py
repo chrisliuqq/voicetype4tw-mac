@@ -16,8 +16,7 @@ from PyQt6.QtGui import QFont, QIcon, QColor, QPainter, QLinearGradient, QBrush,
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import load_config, save_config
-
-SOUL_PATH = Path(__file__).parent.parent / "soul.md"
+from paths import SOUL_PATH
 STT_ENGINES = ["local_whisper", "groq", "gemini", "openrouter"]
 LLM_ENGINES = ["ollama", "openai", "claude", "openrouter", "gemini", "deepseek", "qwen"]
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]

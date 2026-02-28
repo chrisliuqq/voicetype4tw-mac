@@ -10,8 +10,9 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
+from paths import get_data_dir
 
-VOCAB_DIR = Path(__file__).parent.parent / "memory"
+VOCAB_DIR = get_data_dir("vocab")
 CUSTOM_VOCAB_PATH = VOCAB_DIR / "custom_vocab.json"
 AUTO_MEMORY_PATH = VOCAB_DIR / "auto_memory.json"
 

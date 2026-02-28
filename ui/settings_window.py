@@ -750,38 +750,45 @@ class SettingsWindow(QMainWindow):
         """主動試探麥克風，誘發 macOS 彈出權限請求視窗"""
         try:
             import objc
-            objc.loadBundle('AVFoundation', bundle_path='/System/Library/Frameworks/AVFoundation.framework', module_globals=globals())
-            # 只有在尚未授權時才主動要求紀錄
+            ns = {}
+            objc.loadBundle('AVFoundation',
+                            bundle_path='/System/Library/Frameworks/AVFoundation.framework',
+                            module_globals=ns)
+            AVCaptureDevice = ns['AVCaptureDevice']
             if AVCaptureDevice.authorizationStatusForMediaType_('soun') == 0:
-                 AVCaptureDevice.requestAccessForMediaType_completionHandler_('soun', lambda granted: None)
-        except:
+                AVCaptureDevice.requestAccessForMediaType_completionHandler_('soun', lambda granted: None)
+        except Exception:
             pass
 
     def _check_all_permissions(self):
-        import objc
-        # 1. Check Accessibility
+        # 1. Accessibility — AXIsProcessTrusted 是 C 函數，必須用 ctypes
         trusted = False
         try:
-            if 'AXIsProcessTrusted' not in globals():
-                objc.loadBundle('ApplicationServices', bundle_path='/System/Library/Frameworks/ApplicationServices.framework', module_globals=globals())
-            trusted = AXIsProcessTrusted()
-        except:
+            import ctypes
+            lib = ctypes.cdll.LoadLibrary(
+                '/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices')
+            lib.AXIsProcessTrusted.restype = ctypes.c_bool
+            trusted = lib.AXIsProcessTrusted()
+        except Exception:
             trusted = False
         self.light_acc.set_status(trusted)
 
-        # 2. Check Input Monitoring (通常與輔助功能同步，或需 TCC 檢查)
-        # 在一般 Ad-hoc 簽名下，只要 Accessibility 過了，輸入監控通常也會過
-        self.light_input.set_status(trusted) 
+        # 2. Input Monitoring（通常與輔助功能同步）
+        self.light_input.set_status(trusted)
 
-        # 3. Check Microphone
+        # 3. Microphone — AVCaptureDevice 是 ObjC 類別，用 objc.loadBundle
         mic_ok = False
         try:
-            if 'AVCaptureDevice' not in globals():
-                objc.loadBundle('AVFoundation', bundle_path='/System/Library/Frameworks/AVFoundation.framework', module_globals=globals())
-            # status: 0=NotDetermined, 1=Restricted, 2=Denied, 3=Authorized
+            import objc
+            ns = {}
+            objc.loadBundle('AVFoundation',
+                            bundle_path='/System/Library/Frameworks/AVFoundation.framework',
+                            module_globals=ns)
+            AVCaptureDevice = ns['AVCaptureDevice']
+            # 0=NotDetermined, 1=Restricted, 2=Denied, 3=Authorized
             status = AVCaptureDevice.authorizationStatusForMediaType_('soun')
             mic_ok = (status == 3)
-        except:
+        except Exception:
             mic_ok = False
         self.light_mic.set_status(mic_ok)
 

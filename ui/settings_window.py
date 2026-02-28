@@ -23,7 +23,7 @@ WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
 TRIGGER_MODES = ["push_to_talk", "toggle"]
 HOTKEYS = ["right_option", "left_option", "right_ctrl", "f13", "f14", "f15"]
 LLM_MODES = ["replace", "fast"]
-BUILD_ID = "BUILD-0228N2"  # 每次打包前更新這個字串，確認跑的是新版
+BUILD_ID = "BUILD-0228N3"  # 每次打包前更新這個字串，確認跑的是新版
 
 from hotkey.listener import key_to_str, str_to_key
 
@@ -742,6 +742,9 @@ class SettingsWindow(QMainWindow):
         self._check_all_permissions()
 
     def _check_all_permissions(self):
+        import logging
+        log = logging.getLogger("voicetype")
+        
         # 1. Accessibility — AXIsProcessTrusted 是 C 函數，必須用 ctypes
         trusted = False
         try:
@@ -750,32 +753,19 @@ class SettingsWindow(QMainWindow):
                 '/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices')
             lib.AXIsProcessTrusted.restype = ctypes.c_bool
             trusted = lib.AXIsProcessTrusted()
-            print(f"[PERM] Accessibility: {trusted}")
+            log.info(f"[PERM] Accessibility: {trusted}")
         except Exception as e:
-            print(f"[PERM] Accessibility check FAILED: {e}")
+            log.error(f"[PERM] Accessibility check FAILED: {e}")
             trusted = False
         self.light_acc.set_status(trusted)
 
         # 2. Input Monitoring（通常與輔助功能同步）
         self.light_input.set_status(trusted)
 
-        # 3. Microphone — AVCaptureDevice 是 ObjC 類別，用 objc.loadBundle
-        mic_ok = False
-        try:
-            import objc
-            ns = {}
-            objc.loadBundle('AVFoundation',
-                            bundle_path='/System/Library/Frameworks/AVFoundation.framework',
-                            module_globals=ns)
-            AVCaptureDevice = ns['AVCaptureDevice']
-            # 0=NotDetermined, 1=Restricted, 2=Denied, 3=Authorized
-            status = AVCaptureDevice.authorizationStatusForMediaType_('soun')
-            mic_ok = (status == 3)
-            print(f"[PERM] Microphone status: {status} (3=OK), mic_ok={mic_ok}")
-        except Exception as e:
-            print(f"[PERM] Microphone check FAILED: {e}")
-            mic_ok = False
-        self.light_mic.set_status(mic_ok)
+        # 3. Microphone — 暫時不使用 AVFoundation 偵測（避免觸發彈窗）
+        # 改為：如果 Accessibility 已通過，假設麥克風也可以（使用者可透過設定按鈕手動確認）
+        self.light_mic.set_status(False)  # 暫時固定紅燈，待解決後再切換
+        log.info("[PERM] Microphone check skipped (AVFoundation disabled for debugging)")
 
     def _refresh_vocab(self):
         self.vocab_list.clear()

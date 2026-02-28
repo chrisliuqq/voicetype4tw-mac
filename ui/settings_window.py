@@ -23,6 +23,7 @@ WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
 TRIGGER_MODES = ["push_to_talk", "toggle"]
 HOTKEYS = ["right_option", "left_option", "right_ctrl", "f13", "f14", "f15"]
 LLM_MODES = ["replace", "fast"]
+BUILD_ID = "BUILD-0228N"  # 每次打包前更新這個字串，確認跑的是新版
 
 from hotkey.listener import key_to_str, str_to_key
 
@@ -210,9 +211,9 @@ class SettingsWindow(QMainWindow):
         # 根據語言動態設定視窗標題
         lang = self.config.get("language", "zh")
         if "zh" in lang:
-            self.setWindowTitle("嘴砲輸入法 2.2.2 Pro")
+            self.setWindowTitle(f"嘴砲輸入法 2.2.3 Pro [{BUILD_ID}]")
         else:
-            self.setWindowTitle("VoiceType4TW Mac 2.2.2 Pro")
+            self.setWindowTitle(f"VoiceType4TW Mac 2.2.3 Pro [{BUILD_ID}]")
         
         # 設定啟動頁面
         if 0 <= start_page < len(self.sidebar_buttons):
@@ -225,7 +226,7 @@ class SettingsWindow(QMainWindow):
         self.perm_timer.start(2000) # 每 2 秒檢查一次
 
     def _setup_ui(self):
-        self.setWindowTitle("VoiceType4TW Mac 2.2.2 Pro")
+        self.setWindowTitle(f"VoiceType4TW Mac 2.2.3 Pro [{BUILD_ID}]")
         self.setMinimumSize(900, 680)
         
         # Premium CSS
@@ -368,7 +369,7 @@ class SettingsWindow(QMainWindow):
         sidebar_layout.addStretch()
         
         # Credits and SNS at Bottom
-        credit_box = QLabel("v2.2.2 Pro\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
+        credit_box = QLabel(f"v2.2.3 Pro | {BUILD_ID}\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
         credit_box.setStyleSheet("color: #555; font-size: 10px; margin-left: 25px; line-height: 1.2;")
         sidebar_layout.addWidget(credit_box)
         
@@ -448,7 +449,7 @@ class SettingsWindow(QMainWindow):
         layout.setSpacing(30)
 
         dash_header = QHBoxLayout()
-        header = QLabel("Dashboard")
+        header = QLabel(f"Dashboard  [{BUILD_ID}]")
         header.setStyleSheet("font-size: 28px; font-weight: bold; color: #ffffff;")
         dash_header.addWidget(header)
         
@@ -771,7 +772,9 @@ class SettingsWindow(QMainWindow):
                 '/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices')
             lib.AXIsProcessTrusted.restype = ctypes.c_bool
             trusted = lib.AXIsProcessTrusted()
-        except Exception:
+            print(f"[PERM] Accessibility: {trusted}")
+        except Exception as e:
+            print(f"[PERM] Accessibility check FAILED: {e}")
             trusted = False
         self.light_acc.set_status(trusted)
 
@@ -790,7 +793,9 @@ class SettingsWindow(QMainWindow):
             # 0=NotDetermined, 1=Restricted, 2=Denied, 3=Authorized
             status = AVCaptureDevice.authorizationStatusForMediaType_('soun')
             mic_ok = (status == 3)
-        except Exception:
+            print(f"[PERM] Microphone status: {status} (3=OK), mic_ok={mic_ok}")
+        except Exception as e:
+            print(f"[PERM] Microphone check FAILED: {e}")
             mic_ok = False
         self.light_mic.set_status(mic_ok)
 

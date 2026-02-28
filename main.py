@@ -12,6 +12,22 @@ from pathlib import Path
 # Fix SSL certificate issue in py2app bundles when using httpx/huggingface_hub
 os.environ["SSL_CERT_FILE"] = certifi.where()
 
+# ── Debug Log 寫入檔案 (App 版除錯用) ──────────────────────────────
+import logging
+_log_dir = Path.home() / "Library" / "Application Support" / "VoiceType4TW"
+_log_dir.mkdir(parents=True, exist_ok=True)
+_log_file = _log_dir / "debug.log"
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler(str(_log_file), mode='w', encoding='utf-8'),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+log = logging.getLogger("voicetype")
+log.info(f"=== VoiceType4TW Starting === Log: {_log_file}")
+
 from config import load_config, save_config
 from audio.recorder import AudioRecorder
 from hotkey.listener import HotkeyListener

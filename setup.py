@@ -17,13 +17,14 @@ DATA_FILES = [
 # Refined options to avoid RecursionError in modulegraph
 # Using includes instead of packages for core libs can sometimes help
 OPTIONS = {
-    'argv_emulation': True,
+    'argv_emulation': False,
     'iconfile': 'assets/icon.icns',
     'plist': {
-        'LSUIElement': True,
+        'LSUIElement': False, # 暫時顯示 Dock 圖示以確保 TCC 權限攔截順利
         'CFBundleName': "VoiceType4TW-Mac",
         'CFBundleDisplayName': "VoiceType4TW-Mac",
-        'CFBundleIdentifier': "com.jimmychu.voicetype4tw-mac",
+        'CFBundleIdentifier': "com.jimmy4tw.voicetype4tw-mac",
+        'NSPrincipalClass': 'NSApplication',
         'CFBundleVersion': "2.2.0",
         'CFBundleShortVersionString': "2.2.0",
         'NSMicrophoneUsageDescription': "VoiceType needs microphone access to transcribe your speech.",

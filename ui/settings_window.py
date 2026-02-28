@@ -166,9 +166,9 @@ class SettingsWindow(QMainWindow):
         # 根據語言動態設定視窗標題
         lang = self.config.get("language", "zh")
         if "zh" in lang:
-            self.setWindowTitle("嘴砲輸入法 2.2 Pro")
+            self.setWindowTitle("嘴砲輸入法 2.2.1 Pro")
         else:
-            self.setWindowTitle("VoiceType4TW Mac 2.2 Pro")
+            self.setWindowTitle("VoiceType4TW Mac 2.2.1 Pro")
         
         # 設定啟動頁面
         if 0 <= start_page < len(self.sidebar_buttons):
@@ -176,7 +176,7 @@ class SettingsWindow(QMainWindow):
             QTimer.singleShot(10, lambda: self._on_sidebar_changed(start_page))
 
     def _setup_ui(self):
-        self.setWindowTitle("VoiceType4TW Mac 2.2 Pro")
+        self.setWindowTitle("VoiceType4TW Mac 2.2.1 Pro")
         self.setMinimumSize(900, 680)
         
         # Premium CSS

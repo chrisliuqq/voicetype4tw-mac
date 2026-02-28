@@ -18,6 +18,7 @@ DATA_FILES = [
 # Using includes instead of packages for core libs can sometimes help
 OPTIONS = {
     'argv_emulation': True,
+    'iconfile': 'assets/icon.icns',
     'plist': {
         'LSUIElement': True,
         'CFBundleName': "VoiceType4TW-Mac",

@@ -285,7 +285,7 @@ class SettingsWindow(QMainWindow):
         lbl_en.setStyleSheet("font-family: 'Myriad Pro'; font-weight: bold; font-size: 28px; color: white;")
         lbl_en.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        lbl_mac = QLabel("Mac 2.2 Pro")
+        lbl_mac = QLabel("Mac version")
         lbl_mac.setStyleSheet("font-family: 'Myriad Pro'; font-style: italic; font-size: 14px; color: #8a8d91;")
         lbl_mac.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
@@ -320,7 +320,7 @@ class SettingsWindow(QMainWindow):
         sidebar_layout.addStretch()
         
         # Credits and SNS at Bottom
-        credit_box = QLabel("v2.1 Pro\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
+        credit_box = QLabel("v2.2 Pro\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
         credit_box.setStyleSheet("color: #555; font-size: 10px; margin-left: 25px; line-height: 1.2;")
         sidebar_layout.addWidget(credit_box)
         

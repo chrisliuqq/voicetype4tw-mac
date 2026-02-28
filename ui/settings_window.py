@@ -242,9 +242,9 @@ class SettingsWindow(QMainWindow):
         # 根據語言動態設定視窗標題
         lang = self.config.get("language", "zh")
         if "zh" in lang:
-            self.setWindowTitle(f"嘴砲輸入法 2.3.0 Pro [{BUILD_ID}]")
+            self.setWindowTitle("嘴砲輸入法 2.3.0 Pro")
         else:
-            self.setWindowTitle(f"VoiceType4TW Mac 2.3.0 Pro [{BUILD_ID}]")
+            self.setWindowTitle("VoiceType4TW Mac 2.3.0 Pro")
         
         # 設定啟動頁面
         if 0 <= start_page < len(self.sidebar_buttons):
@@ -252,7 +252,7 @@ class SettingsWindow(QMainWindow):
             QTimer.singleShot(10, lambda: self._on_sidebar_changed(start_page))
 
     def _setup_ui(self):
-        self.setWindowTitle(f"VoiceType4TW Mac 2.3.0 Pro [{BUILD_ID}]")
+        self.setWindowTitle("VoiceType4TW Mac 2.3.0 Pro")
         self.setMinimumSize(900, 680)
         
         # Premium CSS
@@ -475,7 +475,7 @@ class SettingsWindow(QMainWindow):
         layout.setSpacing(30)
 
         dash_header = QHBoxLayout()
-        header = QLabel(f"Dashboard  [{BUILD_ID}]")
+        header = QLabel("Dashboard")
         header.setStyleSheet("font-size: 28px; font-weight: bold; color: #ffffff;")
         dash_header.addWidget(header)
         
@@ -602,7 +602,15 @@ class SettingsWindow(QMainWindow):
 
         layout.addWidget(self._page_section_header("🎙 語音辨識配置"))
         self.stt_engine = self._add_grid_row(layout, "核心引擎", QComboBox())
-        self.stt_engine.addItems(STT_ENGINES)
+        engine_meta = {
+            "local_whisper": "Local Whisper (一般版，支援 CPU/GPU通吃)",
+            "mlx_whisper":   "MLX Whisper (Apple 晶片光速加速版)",
+            "groq":          "Groq Whisper (神級雲端超極速)",
+            "gemini":        "Gemini (雲端 API)",
+            "openrouter":    "OpenRouter (雲端 API)",
+        }
+        for eng in STT_ENGINES:
+            self.stt_engine.addItem(engine_meta.get(eng, eng), eng)
         
         self.whisper_model = self._add_grid_row(layout, "Whisper 規格", QComboBox())
         self._populate_whisper_models()
@@ -766,8 +774,13 @@ class SettingsWindow(QMainWindow):
             self.soul_prompt.setPlainText(SOUL_PATH.read_text(encoding="utf-8"))
         
         # Load from config
-        self.stt_engine.setCurrentText(self.config.get("stt_engine", "local_whisper"))
-        
+        stt_val = self.config.get("stt_engine", "local_whisper")
+        stt_idx = self.stt_engine.findData(stt_val)
+        if stt_idx >= 0:
+            self.stt_engine.setCurrentIndex(stt_idx)
+        else:
+            self.stt_engine.setCurrentText(stt_val)
+            
         # Whisper model selection
         m_val = self.config.get("whisper_model", "medium")
         m_idx = self.whisper_model.findData(m_val)
@@ -962,7 +975,7 @@ class SettingsWindow(QMainWindow):
         self._refresh_vocab()
 
     def _save_action(self):
-        self.config["stt_engine"] = self.stt_engine.currentText()
+        self.config["stt_engine"] = self.stt_engine.currentData() or self.stt_engine.currentText()
         # 使用 currentData 取得內部代號如 "medium" 而非顯示文字
         self.config["whisper_model"] = self.whisper_model.currentData() or self.whisper_model.currentText()
         self.config["groq_api_key"] = self.groq_key.text().strip()

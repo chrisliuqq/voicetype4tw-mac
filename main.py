@@ -159,10 +159,7 @@ class VoiceTypeApp:
         self.translation_target = None  # 紀錄翻譯目標，例如 "英文"
         
         # 建立提示音效播放器
-        self.beep_sound = QSoundEffect()
-        beep_path = Path(__file__).parent / "assets" / "beep.wav"
-        self.beep_sound.setSource(QUrl.fromLocalFile(str(beep_path)))
-        self.beep_sound.setVolume(0.5)
+        self.beep_sound = None
         
         hotkeys = {
             "ptt": self.config.get("hotkey_ptt", "alt_r"),
@@ -199,7 +196,8 @@ class VoiceTypeApp:
         self.indicator.set_state("recording")
         
         # 播放提示音，讓使用者知道可以開始講話了
-        self.beep_sound.play()
+        if self.beep_sound:
+            self.beep_sound.play()
         
         self.recorder.start()
 
@@ -447,8 +445,14 @@ class VoiceTypeApp:
         self.hotkey_listener.stop()
 
     def run(self):
-        # 1. 啟動指示器底層 (初始化 QApplication)
+        # 1. 啟拾指示器底層 (初始化 QApplication)
         self.indicator.start_app()
+
+        # 初始化提示音
+        self.beep_sound = QSoundEffect()
+        beep_path = Path(__file__).parent / "assets" / "beep.wav"
+        self.beep_sound.setSource(QUrl.fromLocalFile(str(beep_path)))
+        self.beep_sound.setVolume(0.5)
 
         # 2. 初始化設定視窗 (先不 show，等 loop)
         from ui.settings_window import has_api_key, SettingsWindow

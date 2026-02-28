@@ -18,6 +18,9 @@ from hotkey.listener import HotkeyListener
 from output.injector import TextInjector
 from ui.mic_indicator import MicIndicator
 from ui.menu_bar import VoiceTypeMenuBar
+from PyQt6.QtGui import QIcon
+from PyQt6.QtMultimedia import QSoundEffect
+from PyQt6.QtCore import QUrl
 
 from paths import SOUL_PATH
 
@@ -155,6 +158,12 @@ class VoiceTypeApp:
         self._active_mode: str = "ptt"
         self.translation_target = None  # 紀錄翻譯目標，例如 "英文"
         
+        # 建立提示音效播放器
+        self.beep_sound = QSoundEffect()
+        beep_path = Path(__file__).parent / "assets" / "beep.wav"
+        self.beep_sound.setSource(QUrl.fromLocalFile(str(beep_path)))
+        self.beep_sound.setVolume(0.5)
+        
         hotkeys = {
             "ptt": self.config.get("hotkey_ptt", "alt_r"),
             "toggle": self.config.get("hotkey_toggle", "f13"),
@@ -188,6 +197,10 @@ class VoiceTypeApp:
             
         self.indicator.show()
         self.indicator.set_state("recording")
+        
+        # 播放提示音，讓使用者知道可以開始講話了
+        self.beep_sound.play()
+        
         self.recorder.start()
 
     def _on_stop(self, mode: str):

@@ -5,7 +5,13 @@ Wires up all modules and starts the application.
 import threading
 import time
 import sys
+import os
+import certifi
 from pathlib import Path
+
+# Fix SSL certificate issue in py2app bundles when using httpx/huggingface_hub
+os.environ["SSL_CERT_FILE"] = certifi.where()
+
 from config import load_config, save_config
 from audio.recorder import AudioRecorder
 from hotkey.listener import HotkeyListener
@@ -189,6 +195,7 @@ class VoiceTypeApp:
         duration = time.time() - self._recording_start
         print(f"[main] Recording stopped (mode: {mode}), duration: {duration:.2f}s")
         self.indicator.set_state("processing")
+        self._on_level(0.0) # 強制將音量波形歸零，避免視覺殘留
         audio_bytes = self.recorder.stop()
 
         # ── STT ──────────────────────────────────────────────────

@@ -27,7 +27,7 @@ OPTIONS = {
         'CFBundleShortVersionString': "2.2.0",
         'NSMicrophoneUsageDescription': "VoiceType needs microphone access to transcribe your speech.",
     },
-    'packages': ['rumps', 'PyQt6', 'faster_whisper', 'pynput', 'pyperclip', 'sounddevice', 'httpx'],
+    'packages': ['rumps', 'PyQt6', 'faster_whisper', 'pynput', 'pyperclip', 'sounddevice', '_sounddevice_data', 'httpx', 'certifi'],
     'includes': ['numpy'],
     'excludes': ['tkinter', 'unittest'],
 }

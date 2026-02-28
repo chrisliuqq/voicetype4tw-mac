@@ -118,3 +118,17 @@ cp /Library/Frameworks/Python.framework/Versions/3.12/lib/libcrypto.3.dylib dist
 - **使用者要求**: 使用者指示「紀錄到記憶中」時。
 
 **AI 助手在每次對話結束或里程碑達成時，應主動審視是否需要增補此文件。**
+
+---
+
+## 9. Windows 平台移植藍圖 (Windows Porting Roadmap) - 待開發
+
+### ✅ 核心可行性 (Whisper & GPU)
+Windows 平台完全支援 `faster-whisper`。若使用者具備 NVIDIA 顯卡，效能將大幅提升；普通 CPU 亦可順利執行。
+
+### 🔄 系統架構調整需求
+1. **打包工具**: 由 `py2app` 切換至 **`PyInstaller`**，將專案封裝為單一 `.exe` 檔案。
+2. **路徑管理**: 數據存放路徑需由 `Library/Application Support` 切換至 Windows 的 `%APPDATA%\VoiceType4TW`。
+3. **文字注入 (Injector)**: 需改寫 `output/injector.py`。Windows 不支援 AppleScript，需改用 **`pywin32`** 或發送鍵盤事件（如 `Ctrl+V`）來完成潤飾文字的輸入。
+4. **熱鍵處理**: `pynput` 雖然跨平台，但 Windows 的熱鍵慣例（如 `Ctrl+Shift` 或特定 F 鍵）需在設定介面中進行對應優化。
+

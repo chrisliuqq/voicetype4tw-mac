@@ -49,6 +49,10 @@ class AudioRecorder:
             try:
                 # 每次讀取 0.05 秒的區塊 (16kHz * 0.05 = 800 frames)
                 frames_to_read = int(self.samplerate * 0.05)
+                # Ensure we only try to read if stream is active and we are still recording
+                if not self._stream or not self._stream.active:
+                    break
+                    
                 indata, overflowed = self._stream.read(frames_to_read)
                 
                 with self._lock:
@@ -59,7 +63,6 @@ class AudioRecorder:
                 # 計算音量 RMS (0.0 ~ 1.0) 回傳給 UI
                 if self.level_callback:
                     rms = float(np.sqrt(np.mean(indata.astype(np.float32) ** 2))) / 32768.0
-                    # 如果需要的話，呼叫 callback 顯示錄音狀態
                     self.level_callback(min(rms * 10, 1.0))
 
             except Exception as e:
@@ -70,6 +73,10 @@ class AudioRecorder:
         """Stop recording and return WAV bytes."""
         with self._lock:
             self._recording = False
+            
+        if hasattr(self, '_poll_thread') and self._poll_thread.is_alive():
+            # Wait safely for the blocking read to finish (at most 0.1 ~ 0.2s) before closing the stream
+            self._poll_thread.join(timeout=0.5)
 
         if self._stream:
             try:

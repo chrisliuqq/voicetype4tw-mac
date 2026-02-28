@@ -188,3 +188,59 @@ PyInstaller 有 `--codesign-identity` 選項，可能更成熟
 
 **方向 E: Apple Developer ID（USD 99/年）**
 正式 Developer ID + Notarization = 一勞永逸
+
+---
+
+## 12. Windows 版移植計畫 (VoiceType4TW-Win)
+
+### 前置準備（Windows 電腦上）
+- Python 3.12（python.org，安裝時勾選 Add to PATH）
+- Git（clone 或同步程式碼）
+- NVIDIA GPU + CUDA Toolkit（Local Whisper GPU 加速用，4070Ti ✅）
+- 沒有 GPU 的網友也能用 CPU 模式（faster-whisper 自動偵測）
+
+### 搬移方式
+把整個 `voicetype-mac` 目錄複製到 Windows（USB / Git push+pull / 雲端同步）
+
+### 需要修改的檔案（共 5 個）
+
+**1. `paths.py`** — 資料存放路徑改為跨平台（macOS: ~/Library/Application Support/ → Windows: %APPDATA%）
+
+**2. `output/injector.py`** — 文字注入：macOS 用 osascript 模擬 Cmd+V → Windows 用 pynput 模擬 Ctrl+V
+
+**3. `ui/menu_bar.py`** — 系統列：macOS 用 rumps → Windows 用 pystray + Pillow（改動最大）
+
+**4. `main.py`** — 主迴圈：macOS 用 rumps.timer 驅動 Qt → Windows 直接用 QApplication.exec()
+
+**5. `ui/settings_window.py`** — 移除 macOS 專屬權限偵測（Windows 不需要 TCC）
+
+**6. `ui/mic_indicator.py`** — 音效 afplay 改為跨平台 QSoundEffect（大部分已完成）
+
+### 不需要改的模組（已跨平台）
+- `hotkey/listener.py` — pynput 原生支援 Windows
+- `audio/recorder.py` — sounddevice 支援 Windows
+- `stt/*.py`, `llm/*.py` — 純 API 呼叫
+- `config.py`, `memory/`, `vocab/`, `stats/` — 純檔案操作
+
+### Windows 依賴 (requirements-win.txt)
+PyQt6, faster-whisper, pynput, pyperclip, sounddevice, httpx, certifi, numpy, pystray, Pillow, pyinstaller
+注意：不需要 rumps, objc, Quartz（macOS 專屬）
+
+### Windows 打包流程（在 Windows 電腦上執行）
+```powershell
+pip install -r requirements-win.txt
+python main.py                          # 先測試原始碼能跑
+pyinstaller --onefile --windowed --name VoiceType4TW-Win --icon assets/icon.ico main.py
+```
+
+### GPU 標註（README / 下載頁面）
+- 推薦: NVIDIA GPU (GTX 1060+) + CUDA → 即時辨識
+- 最低: 純 CPU 模式 → 辨識較慢但仍可用
+- faster-whisper 自動偵測，有 GPU 就用 GPU
+
+### 開發順序
+1. 改 paths.py + output/injector.py（最小可用）
+2. 改 main.py，暫時不用 system tray，直接開視窗
+3. Windows 上測試核心功能（錄音→辨識→貼上）
+4. 加 pystray system tray
+5. PyInstaller 打包 exe

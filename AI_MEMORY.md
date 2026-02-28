@@ -244,3 +244,33 @@ pyinstaller --onefile --windowed --name VoiceType4TW-Win --icon assets/icon.ico 
 3. Windows 上測試核心功能（錄音→辨識→貼上）
 4. 加 pystray system tray
 5. PyInstaller 打包 exe
+
+---
+
+## 13. Python 版完備狀態 (2026-02-28 重大進階)
+
+至此，Python 原始碼版本已達到「最穩定且體驗最佳」的階段，可作為後續 Windows 移植的黃金基準 (Golden Base)。
+
+### ✅ 已實作的終極優化
+
+1. **秒開 App (非同步載入)**：
+   - 耗時的 AI 模型 (Whisper/LLM) 載入已移至 `Background Thread`。
+   - 啟動後立刻進入 UI 迴圈，不再有 Dock 卡死問題。
+2. **視覺化載入回饋**：
+   - `MicIndicator` 新增藍色「載入中 (loading)」狀態燈。
+   - 啟動或切換模型時自動亮起藍槓，完成後自動隱藏。
+   - 若在載入中錄音，會彈出 `QMessageBox` 親切提醒，避免崩潰或空回傳。
+3. **資訊透明的 Dashboard**：
+   - **三欄式設計**：權限驗證、AI 模型狀態、系統運行狀態。
+   - **模型監測器**：自動掃描 `~/.cache/huggingface/hub`，即時顯示 **Small / Medium / Large** 模型的下載就緒狀態。
+4. **專業級設定選單**：
+   - Whisper 下拉選單不再只是單調的名稱，改為詳細格式：`MEDIUM [1.5GB] - 均衡型，推薦首選 (已就緒)`。
+   - 加入了各模型的尺寸與用途建議標註。
+5. **穩健的權限偵測**：
+   - 麥克風偵測恢復實時查詢（透過 `objc` 查詢 `AVFoundation`），且保證不觸發彈窗。
+
+### 📌 開發者備忘：移植時的注意事項
+- 當前 `BUILD_ID` 為 `BUILD-0228N6`。
+- `main.py` 的 `_load_models_async` 是所有平台都需要保留的靈魂邏輯，能大幅提升 App 專業感。
+- `ui/settings_window.py` 內的 `_is_model_present` 路徑在 Windows 移植時需確認是否符合 `huggingface_hub` 的預設位置。
+

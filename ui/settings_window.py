@@ -23,7 +23,7 @@ WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
 TRIGGER_MODES = ["push_to_talk", "toggle"]
 HOTKEYS = ["right_option", "left_option", "right_ctrl", "f13", "f14", "f15"]
 LLM_MODES = ["replace", "fast"]
-BUILD_ID = "BUILD-0228N5"  # 每次打包前更新這個字串，確認跑的是新版
+BUILD_ID = "BUILD-0228-GOLD"  # 每次打包前更新這個字串，確認跑的是新版
 
 from hotkey.listener import key_to_str, str_to_key
 
@@ -199,6 +199,37 @@ class PermissionLight(QWidget):
         self.fix_btn.setVisible(not authorized)
 
 
+
+class ModelStatusLight(QWidget):
+    def __init__(self, model_name, size_info, desc_text):
+        super().__init__()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 5, 0, 5)
+        layout.setSpacing(2)
+        
+        top_layout = QHBoxLayout()
+        self.dot = QFrame()
+        self.dot.setFixedSize(10, 10)
+        self.dot.setStyleSheet("background-color: #555; border-radius: 5px;")
+        top_layout.addWidget(self.dot)
+        
+        self.label = QLabel(f"{model_name} ({size_info})")
+        self.label.setStyleSheet("color: #e2e4e7; font-size: 13px; font-weight: bold;")
+        top_layout.addWidget(self.label)
+        top_layout.addStretch()
+        layout.addLayout(top_layout)
+        
+        self.desc = QLabel(desc_text)
+        self.desc.setStyleSheet("color: #888; font-size: 11px; margin-left: 18px;")
+        self.desc.setWordWrap(True)
+        layout.addWidget(self.desc)
+
+    def set_status(self, downloaded: bool):
+        # 綠色代表已就緒，灰色代表未下載
+        color = "#00e676" if downloaded else "#444"
+        self.dot.setStyleSheet(f"background-color: {color}; border-radius: 5px;")
+
+
 class SettingsWindow(QMainWindow):
     def __init__(self, on_save=None, start_page=0):
         super().__init__()
@@ -211,9 +242,9 @@ class SettingsWindow(QMainWindow):
         # 根據語言動態設定視窗標題
         lang = self.config.get("language", "zh")
         if "zh" in lang:
-            self.setWindowTitle(f"嘴砲輸入法 2.2.3 Pro [{BUILD_ID}]")
+            self.setWindowTitle(f"嘴砲輸入法 2.3.0 Pro [{BUILD_ID}]")
         else:
-            self.setWindowTitle(f"VoiceType4TW Mac 2.2.3 Pro [{BUILD_ID}]")
+            self.setWindowTitle(f"VoiceType4TW Mac 2.3.0 Pro [{BUILD_ID}]")
         
         # 設定啟動頁面
         if 0 <= start_page < len(self.sidebar_buttons):
@@ -221,7 +252,7 @@ class SettingsWindow(QMainWindow):
             QTimer.singleShot(10, lambda: self._on_sidebar_changed(start_page))
 
     def _setup_ui(self):
-        self.setWindowTitle(f"VoiceType4TW Mac 2.2.3 Pro [{BUILD_ID}]")
+        self.setWindowTitle(f"VoiceType4TW Mac 2.3.0 Pro [{BUILD_ID}]")
         self.setMinimumSize(900, 680)
         
         # Premium CSS
@@ -364,7 +395,7 @@ class SettingsWindow(QMainWindow):
         sidebar_layout.addStretch()
         
         # Credits and SNS at Bottom
-        credit_box = QLabel(f"v2.2.3 Pro | {BUILD_ID}\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
+        credit_box = QLabel(f"v2.3.0 Pro | {BUILD_ID}\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
         credit_box.setStyleSheet("color: #555; font-size: 10px; margin-left: 25px; line-height: 1.2;")
         sidebar_layout.addWidget(credit_box)
         
@@ -463,34 +494,55 @@ class SettingsWindow(QMainWindow):
 
         # Top Cards: Row 1
         cards_row1 = QHBoxLayout()
+        cards_row1.setSpacing(15)
         
         # 1. Permission Card
         perm_card = GlassCard()
         p_layout = QVBoxLayout(perm_card)
-        p_layout.setContentsMargins(20, 20, 20, 20)
-        p_layout.addWidget(QLabel("權限驗證 (macOS 隱私)"))
+        p_layout.setContentsMargins(15, 15, 15, 15)
+        lbl_p = QLabel("🛡️ 權限驗證 (macOS)")
+        lbl_p.setStyleSheet("font-weight: bold; color: #aaa; margin-bottom: 5px;")
+        p_layout.addWidget(lbl_p)
         
-        self.light_acc = PermissionLight("輔助功能 (Accessibility)", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        self.light_acc = PermissionLight("輔助功能 (Access)", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
         p_layout.addWidget(self.light_acc)
         
-        self.light_input = PermissionLight("輸入監聽 (Input Monitoring)", "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
+        self.light_input = PermissionLight("輸入監聽 (Monitor)", "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
         p_layout.addWidget(self.light_input)
         
-        self.light_mic = PermissionLight("麥克風 (Microphone)", "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
+        self.light_mic = PermissionLight("麥克風 (Mic)", "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
         p_layout.addWidget(self.light_mic)
         cards_row1.addWidget(perm_card)
 
-        # 2. Status Card
+        # 2. Model Card (New)
+        model_card = GlassCard()
+        m_layout = QVBoxLayout(model_card)
+        m_layout.setContentsMargins(15, 15, 15, 15)
+        lbl_m = QLabel("🧠 AI 本地模型 (Faster-Whisper)")
+        lbl_m.setStyleSheet("font-weight: bold; color: #aaa; margin-bottom: 5px;")
+        m_layout.addWidget(lbl_m)
+        
+        self.light_model_small = ModelStatusLight("Small", "500MB", "輕快，但精準度稍遜。")
+        self.light_model_medium = ModelStatusLight("Medium", "1.5GB", "均衡型，首選推薦 (精準)。")
+        self.light_model_large = ModelStatusLight("Large", "3.0GB", "極致精準，背景嘈雜也能辨識。")
+        m_layout.addWidget(self.light_model_small)
+        m_layout.addWidget(self.light_model_medium)
+        m_layout.addWidget(self.light_model_large)
+        cards_row1.addWidget(model_card)
+
+        # 3. Status Card
         status_card = GlassCard()
         status_layout = QVBoxLayout(status_card)
-        status_layout.setContentsMargins(20, 20, 20, 20)
-        status_layout.addWidget(QLabel("系統狀態"))
+        status_layout.setContentsMargins(15, 15, 15, 15)
+        lbl_s = QLabel("📺 運行狀態")
+        lbl_s.setStyleSheet("font-weight: bold; color: #aaa; margin-bottom: 5px;")
+        status_layout.addWidget(lbl_s)
         
         self.lbl_status_ai = QLabel("AI 潤飾: 已開啟")
         self.lbl_status_ai.setStyleSheet("color: #7c4dff; font-weight: bold; font-size: 16px;")
         status_layout.addWidget(self.lbl_status_ai)
         
-        self.lbl_status_stt = QLabel("引擎: Local Whisper (Medium)")
+        self.lbl_status_stt = QLabel("引擎: Local Whisper")
         self.lbl_status_stt.setStyleSheet("color: #888; font-size: 13px;")
         status_layout.addWidget(self.lbl_status_stt)
         cards_row1.addWidget(status_card)
@@ -553,7 +605,7 @@ class SettingsWindow(QMainWindow):
         self.stt_engine.addItems(STT_ENGINES)
         
         self.whisper_model = self._add_grid_row(layout, "Whisper 規格", QComboBox())
-        self.whisper_model.addItems(WHISPER_MODELS)
+        self._populate_whisper_models()
 
         self.groq_key = self._add_grid_row(layout, "Groq API Key (選填)", QLineEdit())
         self.groq_key.setEchoMode(QLineEdit.EchoMode.Password)
@@ -715,7 +767,14 @@ class SettingsWindow(QMainWindow):
         
         # Load from config
         self.stt_engine.setCurrentText(self.config.get("stt_engine", "local_whisper"))
-        self.whisper_model.setCurrentText(self.config.get("whisper_model", "medium"))
+        
+        # Whisper model selection
+        m_val = self.config.get("whisper_model", "medium")
+        m_idx = self.whisper_model.findData(m_val)
+        if m_idx >= 0:
+            self.whisper_model.setCurrentIndex(m_idx)
+        else:
+            self.whisper_model.setCurrentText(m_val) # fallback
         self.groq_key.setText(self.config.get("groq_api_key", ""))
         self.language.setText(self.config.get("language", "zh"))
         self.llm_enabled.setChecked(self.config.get("llm_enabled", False))
@@ -738,8 +797,9 @@ class SettingsWindow(QMainWindow):
         eng = self.config.get("stt_engine", "local_whisper")
         self.lbl_status_stt.setText(f"引擎: {eng.upper()}")
         
-        # 只在載入時檢查一次權限（不自動要求，不定時輪詢）
+        # 檢查權限與模型狀態
         self._check_all_permissions()
+        self._check_local_models()
 
     def _check_all_permissions(self):
         import logging
@@ -762,10 +822,61 @@ class SettingsWindow(QMainWindow):
         # 2. Input Monitoring（通常與輔助功能同步）
         self.light_input.set_status(trusted)
 
-        # 3. Microphone — 暫時不使用 AVFoundation 偵測（避免觸發彈窗）
-        # 改為：如果 Accessibility 已通過，假設麥克風也可以（使用者可透過設定按鈕手動確認）
-        self.light_mic.set_status(False)  # 暫時固定紅燈，待解決後再切換
-        log.info("[PERM] Microphone check skipped (AVFoundation disabled for debugging)")
+        # 3. Microphone (macOS)
+        try:
+            import objc
+            # 使用 objc 動態載入 AVFoundation，此查詢方法不會觸發彈窗
+            objc.loadBundle('AVFoundation', bundle_path='/System/Library/Frameworks/AVFoundation.framework', module_globals=globals())
+            # 'soun' is the type for 'audio' in AVFoundation (AVMediaTypeAudio)
+            status = AVCaptureDevice.authorizationStatusForMediaType_('soun')
+            mic_ok = (status == 3) # 3 == AVAuthorizationStatusAuthorized
+            self.light_mic.set_status(mic_ok)
+            log.info(f"[PERM] Microphone Status: {status} (Authorized: {mic_ok})")
+        except Exception as e:
+            log.error(f"[PERM] Microphone check FAILED: {e}")
+            self.light_mic.set_status(False)
+
+    def _check_local_models(self):
+        """檢查 Faster-Whisper 模型是否已下載到本機快取"""
+        self.light_model_small.set_status(self._is_model_present("small"))
+        self.light_model_medium.set_status(self._is_model_present("medium"))
+        self.light_model_large.set_status(self._is_model_present("large"))
+
+    def _is_model_present(self, size: str) -> bool:
+        try:
+            cache_path = Path.home() / ".cache" / "huggingface" / "hub"
+            if not cache_path.exists():
+                return False
+            # faster-whisper 命名規則：models--Systran--faster-whisper-<size>
+            folder_prefix = f"models--Systran--faster-whisper-{size}"
+            for p in cache_path.iterdir():
+                if p.is_dir() and p.name.startswith(folder_prefix):
+                    # 檢查是否有 snapshot
+                    snap = p / "snapshots"
+                    if snap.exists() and any(snap.iterdir()):
+                        return True
+            return False
+        except Exception:
+            return False
+
+    def _populate_whisper_models(self):
+        """依據模型大小、本機狀態與推薦程度，格式化顯示 COMBOBOX 選單內容"""
+        self.whisper_model.clear()
+        meta = {
+            "tiny":   ("75MB",  "極速辨識"),
+            "base":   ("145MB", "快速辨識"),
+            "small":  ("500MB", "輕量，速度快"),
+            "medium": ("1.5GB", "均衡型，推薦首選"),
+            "large":  ("3.0GB", "極限型，最精準"),
+        }
+        # 依序加入 Tiny 到 Large
+        for m in ["tiny", "base", "small", "medium", "large"]:
+            if m in meta:
+                size, desc = meta[m]
+                is_ready = self._is_model_present(m)
+                status = " (已就緒)" if is_ready else " (未下載)"
+                label = f"{m.upper():<8} [{size}] - {desc}{status}"
+                self.whisper_model.addItem(label, m) # m 為內部代號，例如 "medium"
 
     def _refresh_vocab(self):
         self.vocab_list.clear()
@@ -852,7 +963,8 @@ class SettingsWindow(QMainWindow):
 
     def _save_action(self):
         self.config["stt_engine"] = self.stt_engine.currentText()
-        self.config["whisper_model"] = self.whisper_model.currentText()
+        # 使用 currentData 取得內部代號如 "medium" 而非顯示文字
+        self.config["whisper_model"] = self.whisper_model.currentData() or self.whisper_model.currentText()
         self.config["groq_api_key"] = self.groq_key.text().strip()
         self.config["language"] = self.language.text().strip()
         self.config["llm_enabled"] = self.llm_enabled.isChecked()

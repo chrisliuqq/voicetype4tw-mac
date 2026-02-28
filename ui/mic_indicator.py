@@ -27,6 +27,7 @@ class MicIndicatorWindow(QWidget):
         "recording": QColor(255, 80, 80),      # red
         "processing": QColor(255, 200, 50),    # yellow
         "done": QColor(80, 200, 120),          # green
+        "loading": QColor(0, 122, 255),       # blue
     }
 
     def __init__(self):
@@ -142,9 +143,9 @@ class MicIndicatorWindow(QWidget):
         bar_w, gap = 3, 2
         total_bars = len(self._bars)
         bars_w = total_bars * (bar_w + gap) - gap
-        label_map = {"recording": "錄音中...", "processing": "辨識中...", "done": "完成"}
+        label_map = {"recording": "錄音中...", "processing": "辨識中...", "done": "完成", "loading": "載入中..."}
         label_text = label_map.get(self._state, "")
-        if self._state != "done" and self._label_suffix:
+        if self._state not in ["done", "loading"] and self._label_suffix:
             label_text += f" {self._label_suffix}"
         label_w = fm_label.horizontalAdvance(label_text)
         label_gap = 8 if label_w > 0 else 0

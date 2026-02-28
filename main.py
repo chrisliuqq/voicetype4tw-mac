@@ -165,8 +165,9 @@ class VoiceTypeApp:
         self.config = load_config()
         self.indicator = MicIndicator()
         self.injector = TextInjector()
-        self.stt = build_stt(self.config)
-        self.llm = build_llm(self.config)
+        self.stt = None       # 改為延遲載入
+        self.llm = None       # 改為延遲載入
+        self._models_ready = False
         self.recorder = AudioRecorder(level_callback=self._on_level)
         self._recording_start: float = 0.0
         self._active_mode: str = "ptt"
@@ -212,11 +213,20 @@ class VoiceTypeApp:
         self.recorder.start()
 
     def _on_stop(self, mode: str):
+        # ── 1. Check Model Load State ───────────────────────────
+        if not self._models_ready:
+            from PyQt6.QtWidgets import QMessageBox
+            self.indicator.hide()
+            QMessageBox.warning(None, "載入中", "AI 模型還在載入中（通常只有第一次啟動需要較長時間，請先在「偏好設定」中確認下載狀況），請稍候 30 秒再試一次！")
+            return
+
         # Determine recording duration early
         duration = time.time() - self._recording_start
         print(f"[main] Recording stopped (mode: {mode}), duration: {duration:.2f}s")
         self.indicator.set_state("processing")
         self._on_level(0.0) # 強制將音量波形歸零，避免視覺殘留
+        
+        # ── 2. Stop and get WAV bytes ───────────────────────────
         audio_bytes = self.recorder.stop()
 
         # ── STT ──────────────────────────────────────────────────
@@ -454,22 +464,46 @@ class VoiceTypeApp:
     def _on_quit(self):
         self.hotkey_listener.stop()
 
+    def _load_models_async(self):
+        """背景執行緒：專門負責載入耗時的 STT 和 LLM 模型"""
+        print("[main] Starting async model loading...")
+        try:
+            self.stt = build_stt(self.config)
+            self.llm = build_llm(self.config)
+            self._models_ready = True
+            print("[main] Models are READY.")
+            # 載入完後隱藏藍色橫條
+            self.indicator.hide()
+        except Exception as e:
+            print(f"[main] FAILED to load models: {e}")
+
     def run(self):
         # 1. 啟動指示器底層 (初始化 QApplication)
         self.indicator.start_app()
+        
+        # 顯示藍色「載入中」橫條 (Hugging Face 下載或本機初始化)
+        self.indicator.set_state("loading")
+        self.indicator.show()
 
         # 2. 初始化設定視窗 (先不 show，等 loop)
         from ui.settings_window import has_api_key, SettingsWindow
         start_page = 0 if has_api_key(self.config) else 4
 
-        def _on_init_save(new_config):
-            self.config = new_config
-            self.stt = build_stt(self.config)
-            self.llm = build_llm(self.config)
+        # 背景啟動模型載入
+        load_thread = threading.Thread(target=self._load_models_async, daemon=True)
+        load_thread.start()
 
-        self.startup_settings = SettingsWindow(on_save=_on_init_save, start_page=start_page)
+        def _on_config_changed(new_config):
+            self.config = new_config
+            # 儲存設定後重新啟動載入程序
+            self._models_ready = False
+            self.indicator.set_state("loading")
+            self.indicator.show()
+            threading.Thread(target=self._load_models_async, daemon=True).start()
+
+        self.startup_settings = SettingsWindow(on_save=_on_config_changed, start_page=start_page)
         
-        # 用 QTimer 延遲 show 視窗，避開 rumps 啟動時的 Mach Port 衝突 (閃退主因)
+        # 用 QTimer 延遲 show 視窗，避開 rumps 啟動時的 Mach Port 衝突
         from PyQt6.QtCore import QTimer
         def delayed_show():
             self.startup_settings.show()
@@ -490,8 +524,7 @@ class VoiceTypeApp:
             on_config_saved=self._on_config_saved,
         )
 
-        # ── 定時驅動 Qt 事件迴圈 (讓 MicIndicator 能夠顯示與更新) ──
-        # 因為 rumps 和 PyQt6 都需要主執行緒，我們用 rumps 的 timer 來驅動 Qt
+        # ── 定時驅動 Qt 事件迴圈 ──
         @rumps.timer(0.05)
         def drive_qt_events(_):
             if self.indicator._app:

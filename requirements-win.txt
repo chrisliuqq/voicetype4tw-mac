@@ -1,0 +1,11 @@
+PyQt6
+faster-whisper
+pynput
+pyperclip
+sounddevice
+httpx
+certifi
+numpy
+pystray
+Pillow
+pyinstaller

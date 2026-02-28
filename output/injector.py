@@ -20,19 +20,39 @@ class TextInjector:
         """往回選取 char_count 個字元（用於背景 LLM 替換）"""
         if char_count <= 0:
             return
-        script = f"""
-        tell application "System Events"
-            repeat {char_count} times
-                key code 123 using shift down
-            end repeat
-        end tell
-        """
-        subprocess.run(["osascript", "-e", script], check=True)
+            
+        import platform
+        if platform.system() == "Windows":
+            from pynput.keyboard import Controller, Key
+            kb = Controller()
+            with kb.pressed(Key.shift):
+                for _ in range(char_count):
+                    kb.press(Key.left)
+                    kb.release(Key.left)
+        else:
+            # macOS: Use AppleScript
+            script = f"""
+            tell application "System Events"
+                repeat {char_count} times
+                    key code 123 using shift down
+                end repeat
+            end tell
+            """
+            subprocess.run(["osascript", "-e", script], check=True)
 
     def _paste(self) -> None:
-        script = """
-        tell application "System Events"
-            keystroke "v" using command down
-        end tell
-        """
-        subprocess.run(["osascript", "-e", script], check=True)
+        import platform
+        if platform.system() == "Windows":
+            from pynput.keyboard import Controller, Key
+            kb = Controller()
+            with kb.pressed(Key.ctrl):
+                kb.press('v')
+                kb.release('v')
+        else:
+            # macOS: Use AppleScript
+            script = """
+            tell application "System Events"
+                keystroke "v" using command down
+            end tell
+            """
+            subprocess.run(["osascript", "-e", script], check=True)

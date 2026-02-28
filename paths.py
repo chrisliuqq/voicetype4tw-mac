@@ -1,9 +1,13 @@
 import os
 from pathlib import Path
 
-# Get user home directory and create standard macOS app support directory
+# Get user home directory and create standard app support directory
 HOME = Path.home()
-APP_DATA_DIR = HOME / "Library" / "Application Support" / "VoiceType4TW"
+import platform
+if platform.system() == "Windows":
+    APP_DATA_DIR = Path(os.environ.get("APPDATA", HOME)) / "VoiceType4TW"
+else:
+    APP_DATA_DIR = HOME / "Library" / "Application Support" / "VoiceType4TW"
 
 # Ensure the directory exists
 APP_DATA_DIR.mkdir(parents=True, exist_ok=True)

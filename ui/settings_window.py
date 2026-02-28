@@ -23,7 +23,7 @@ WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
 TRIGGER_MODES = ["push_to_talk", "toggle"]
 HOTKEYS = ["right_option", "left_option", "right_ctrl", "f13", "f14", "f15"]
 LLM_MODES = ["replace", "fast"]
-BUILD_ID = "BUILD-0228N"  # 每次打包前更新這個字串，確認跑的是新版
+BUILD_ID = "BUILD-0228N2"  # 每次打包前更新這個字串，確認跑的是新版
 
 from hotkey.listener import key_to_str, str_to_key
 
@@ -219,11 +219,6 @@ class SettingsWindow(QMainWindow):
         if 0 <= start_page < len(self.sidebar_buttons):
             # 延遲一點點執行，避免在 UI 還沒完全掛載時觸發 visibility 切換
             QTimer.singleShot(10, lambda: self._on_sidebar_changed(start_page))
-        
-        # 定期檢查權限狀態
-        self.perm_timer = QTimer(self)
-        self.perm_timer.timeout.connect(self._check_all_permissions)
-        self.perm_timer.start(2000) # 每 2 秒檢查一次
 
     def _setup_ui(self):
         self.setWindowTitle(f"VoiceType4TW Mac 2.2.3 Pro [{BUILD_ID}]")
@@ -743,25 +738,8 @@ class SettingsWindow(QMainWindow):
         eng = self.config.get("stt_engine", "local_whisper")
         self.lbl_status_stt.setText(f"引擎: {eng.upper()}")
         
-        # 只在第一次啟動時試探麥克風權限
-        if not getattr(self, '_mic_requested', False):
-            self._mic_requested = True
-            QTimer.singleShot(1000, self._request_mic_permission)
+        # 只在載入時檢查一次權限（不自動要求，不定時輪詢）
         self._check_all_permissions()
-
-    def _request_mic_permission(self):
-        """主動試探麥克風，誘發 macOS 彈出權限請求視窗（只執行一次）"""
-        try:
-            import objc
-            ns = {}
-            objc.loadBundle('AVFoundation',
-                            bundle_path='/System/Library/Frameworks/AVFoundation.framework',
-                            module_globals=ns)
-            AVCaptureDevice = ns['AVCaptureDevice']
-            if AVCaptureDevice.authorizationStatusForMediaType_('soun') == 0:
-                AVCaptureDevice.requestAccessForMediaType_completionHandler_('soun', lambda granted: None)
-        except Exception:
-            pass
 
     def _check_all_permissions(self):
         # 1. Accessibility — AXIsProcessTrusted 是 C 函數，必須用 ctypes

@@ -181,7 +181,7 @@ python main.py
 
 ## 支援與回饋
 
-![歡迎抖內](assets/donate-linepay.jpg)
+<img src="assets/donate-linepay.jpg" alt="歡迎抖內" width="200" />
 
 如果你覺得嘴炮輸入法對你有幫助，歡迎：
 

@@ -167,9 +167,9 @@ class SettingsWindow(QMainWindow):
         # 根據語言動態設定視窗標題
         lang = self.config.get("language", "zh")
         if "zh" in lang:
-            self.setWindowTitle("嘴炮輸入法")
+            self.setWindowTitle("嘴炮輸入法 2.2 Pro")
         else:
-            self.setWindowTitle("VoiceType4TW Mac version")
+            self.setWindowTitle("VoiceType4TW Mac 2.2 Pro")
         
         # 設定啟動頁面
         if 0 <= start_page < len(self.sidebar_buttons):
@@ -177,7 +177,7 @@ class SettingsWindow(QMainWindow):
             QTimer.singleShot(10, lambda: self._on_sidebar_changed(start_page))
 
     def _setup_ui(self):
-        self.setWindowTitle("VoiceType4TW Mac Pro")
+        self.setWindowTitle("VoiceType4TW Mac 2.2 Pro")
         self.setMinimumSize(900, 680)
         
         # Premium CSS
@@ -285,7 +285,7 @@ class SettingsWindow(QMainWindow):
         lbl_en.setStyleSheet("font-family: 'Myriad Pro'; font-weight: bold; font-size: 28px; color: white;")
         lbl_en.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        lbl_mac = QLabel("Mac version")
+        lbl_mac = QLabel("Mac 2.2 Pro")
         lbl_mac.setStyleSheet("font-family: 'Myriad Pro'; font-style: italic; font-size: 14px; color: #8a8d91;")
         lbl_mac.setAlignment(Qt.AlignmentFlag.AlignCenter)
         

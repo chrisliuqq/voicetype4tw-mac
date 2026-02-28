@@ -742,12 +742,14 @@ class SettingsWindow(QMainWindow):
         eng = self.config.get("stt_engine", "local_whisper")
         self.lbl_status_stt.setText(f"引擎: {eng.upper()}")
         
-        # 啟動時試探性要求麥克風權限，確保出現在系統清單中
-        QTimer.singleShot(1000, self._request_mic_permission)
+        # 只在第一次啟動時試探麥克風權限
+        if not getattr(self, '_mic_requested', False):
+            self._mic_requested = True
+            QTimer.singleShot(1000, self._request_mic_permission)
         self._check_all_permissions()
 
     def _request_mic_permission(self):
-        """主動試探麥克風，誘發 macOS 彈出權限請求視窗"""
+        """主動試探麥克風，誘發 macOS 彈出權限請求視窗（只執行一次）"""
         try:
             import objc
             ns = {}

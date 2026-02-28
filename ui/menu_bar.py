@@ -45,9 +45,9 @@ class VoiceTypeMenuBar(rumps.App):
         ]
 
     def _toggle_llm(self, sender):
-        self.on_toggle_llm()
-        enabled = self.config.get("llm_enabled", False)
+        enabled = self.on_toggle_llm()
         sender.title = f"AI 潤飾/翻譯 : {'ON' if enabled else 'OFF'}"
+
 
     def _translate_en(self, _):
         self.on_set_translation("英文")

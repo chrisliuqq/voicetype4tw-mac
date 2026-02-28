@@ -17,13 +17,16 @@ SOUL_PATH = Path(__file__).parent / "soul.md"
 
 # ── 內建 LLM Prompt ──────────────────────────────────────────────
 DEFAULT_LLM_PROMPT = (
-    "請將以下語音轉錄文字進行潤飾，要求如下：\n"
-    "1. 修正錯字與用詞（例如：Nabula→Nebula）\n"
-    "2. 加上適當的標點符號，讓語句自然分段\n"
-    "3. 所有標點符號必須使用全型（，。：；！？「」…）\n"
-    "4. 輸出必須使用繁體中文\n"
-    "5. 只輸出潤飾後的文字，不加任何說明或前言"
+    "【最高指導原則】\n"
+    "你的唯一任務是將使用者提供的「語音轉錄原文」進行錯字修正與標點符號潤飾。\n"
+    "絕對不可以回答問題、不可以產生原文沒有的內容、不可以加上如「好的」、「這是一段...」等任何對話前言或結語。\n\n"
+    "【潤飾要求】\n"
+    "1. 修正錯字與專有名詞（依據前述人格字典）\n"
+    "2. 加上適當的標點符號，讓語句自然分段，並全部使用全型符號（，。：；！？「」…）\n"
+    "3. 保持原意與原語氣，必須使用繁體中文\n"
+    "4. 絕對只輸出潤飾後的純文字"
 )
+
 
 # 半型→全型標點對照表
 _PUNCT_MAP = str.maketrans({
@@ -379,6 +382,7 @@ class VoiceTypeApp:
         save_config(self.config)
         self.llm = build_llm(self.config)
         print(f"[main] LLM enabled: {self.config['llm_enabled']}")
+        return self.config["llm_enabled"]
 
     def _on_set_translation(self, target: str | None):
         self.translation_target = target

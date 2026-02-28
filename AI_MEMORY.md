@@ -132,3 +132,19 @@ Windows 平台完全支援 `faster-whisper`。若使用者具備 NVIDIA 顯卡�
 3. **文字注入 (Injector)**: 需改寫 `output/injector.py`。Windows 不支援 AppleScript，需改用 **`pywin32`** 或發送鍵盤事件（如 `Ctrl+V`）來完成潤飾文字的輸入。
 4. **熱鍵處理**: `pynput` 雖然跨平台，但 Windows 的熱鍵慣例（如 `Ctrl+Shift` 或特定 F 鍵）需在設定介面中進行對應優化。
 
+---
+
+## 10. macOS 權限偵測與封裝環境的窘境 (The Permission Detection Dilemma)
+
+### ❌ 窘境描述 (Dilemma)
+即便在 macOS 「系統設定」中手動開啟了錄音、輔助功能、輸入監控等權限，打包後的 `.app` 版（如 v2.2.1/2.2.2）往往無法正確在 Dashboard 反映綠燈，燈號始終卡在紅燈。主要原因包含：
+1. **框架缺失**: `py2app` 打包時若未明確指定 `packages=['objc', 'AVFoundation', 'ApplicationServices']`，則 App 內部無法直接與 macOS TCC (Transparency, Consent, and Control) 框架溝通。
+2. **誘發機制 (Inducement)**: App 若從未主動嘗試錄音，不會出現在系統權限清單中。單純靠熱鍵監聽有時無法觸發系統授權視窗，導致使用者在清單中找不到項目。
+
+### ✅ 目前進展與解決策略
+1. **強制打包 Framework**: 在 `setup.py` 的 `packages` 中顯式加入 macOS 核心套件（`objc`, `AVFoundation`, `ApplicationServices`）。
+2. **主動敲門 (Triggering)**: 設定視窗啟動後，延遲 1 秒發起一次輕量級的麥克風預檢 (Pre-flight) 請求，主動誘發系統顯示授權視窗。
+3. **動態偵測優化**: 在 `ui/settings_window.py` 改用更標準、直接的 `import` 方式載入系統框架，避免使用動態 `loadBundle` 引發的路徑黑箱。
+4. **實時監控**: 使用 `QTimer` 每 2 秒掃描一次權限狀態，讓使用者在系統設定中完成授權後，Dashboard 燈號能立即轉為綠色，無需重新啟動 App。
+
+**開發者註記**：遇到此窘境時，優先檢查 `setup.py` 的打包框架是否完整，並利用 `tccutil reset All [BundleID]` 進行乾淨的重新授權測試。

@@ -3,7 +3,7 @@ set -e
 
 echo "清理舊的構建檔案..."
 rm -rf build dist
-rm -f Release.zip
+rm -f VoiceType4TW-Mac-Release.zip
 
 echo "使用 py2app 進行打包..."
 python3 setup.py py2app
@@ -18,7 +18,7 @@ cp 首次開啟必看_解除損毀警告.md release_pack/
 
 echo "將應用程式打包成 ZIP..."
 cd release_pack
-zip -r ../VoiceType4TW-Mac-Release.zip *
+zip -ry ../VoiceType4TW-Mac-Release.zip *
 cd ..
 rm -rf release_pack
 

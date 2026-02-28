@@ -35,7 +35,7 @@ OPTIONS = {
     },
     'packages': ['rumps', 'PyQt6', 'faster_whisper', 'pynput', 'pyperclip', 'sounddevice', '_sounddevice_data', 'httpx', 'certifi', 'objc', 'Quartz', 'mlx_whisper'],
     'includes': ['numpy', 'mlx'],
-    'excludes': ['tkinter', 'unittest'],
+    'excludes': ['tkinter', 'unittest', 'torch'],
 }
 
 setup(

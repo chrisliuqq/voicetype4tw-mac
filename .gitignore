@@ -10,11 +10,13 @@ venv/
 # Project Specific Data (Personal/Sensitive)
 config.json
 soul.md
-memory/
-vocab/
-stats/
-audio/
-output/
+memory/*.json
+memory/archive/
+vocab/*.json
+vocab/archive/
+stats/*.json
+audio/*.wav
+output/*.txt
 
 # macOS
 .DS_Store

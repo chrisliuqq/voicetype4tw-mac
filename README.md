@@ -36,7 +36,7 @@ macOS本地語音輸入工具，按下快捷鍵開始講話，系統自動幫你
 
 ## 浮動錄音狀態視窗
 
-![浮動錄音狀態視窗](assets/screenshot-miclevel.png)
+![浮動錄音狀態視窗](assets/screenshot-miclevel.jpg)
 
 這裡有多種模式呈現
 

@@ -615,12 +615,6 @@ class SettingsWindow(QMainWindow):
         self.btn_ptt = HotkeyRecorderButton(self.config.get("hotkey_ptt", "alt_r"))
         self._add_grid_row(grid_layout, "錄音按住 (PTT)", self.btn_ptt)
         
-        self.btn_toggle = HotkeyRecorderButton(self.config.get("hotkey_toggle", "f13"))
-        self._add_grid_row(grid_layout, "錄音切換 (Toggle)", self.btn_toggle)
-        
-        self.btn_llm = HotkeyRecorderButton(self.config.get("hotkey_llm", "f14"))
-        self._add_grid_row(grid_layout, "強制 AI 處理", self.btn_llm)
-        
         layout.addWidget(hotkey_grid)
         
         layout.addWidget(self._page_section_header("⚙️ 偏好偏好"))
@@ -773,8 +767,6 @@ class SettingsWindow(QMainWindow):
         self.config["openai_api_key"] = self.openai_key.text().strip()
         self.config["openrouter_api_key"] = self.openrouter_key.text().strip()
         self.config["hotkey_ptt"] = self.btn_ptt.key_str
-        self.config["hotkey_toggle"] = self.btn_toggle.key_str
-        self.config["hotkey_llm"] = self.btn_llm.key_str
         self.config["auto_paste"] = self.auto_paste.isChecked()
         self.config["debug_mode"] = self.debug_mode.isChecked()
 

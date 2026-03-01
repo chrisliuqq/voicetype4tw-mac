@@ -7,7 +7,7 @@ import sys
 import threading
 from PyQt6.QtWidgets import QApplication, QWidget
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QObject, QUrl
-from PyQt6.QtGui import QPainter, QColor, QPen, QFont, QFontMetrics
+from PyQt6.QtGui import QPainter, QColor, QPen, QFont, QFontMetrics, QCursor, QGuiApplication
 from PyQt6.QtMultimedia import QSoundEffect
 
 
@@ -69,9 +69,17 @@ class MicIndicatorWindow(QWidget):
         self._reposition()
 
     def _reposition(self):
-        screen_obj = QApplication.primaryScreen()
+        # Detect which screen the cursor is currently on
+        cursor_pos = QCursor.pos()
+        screen_obj = QGuiApplication.screenAt(cursor_pos)
+        
+        # Fallback to primary screen if not found
+        if not screen_obj:
+            screen_obj = QGuiApplication.primaryScreen()
+            
         if not screen_obj:
             return
+            
         available = screen_obj.availableGeometry()
         x = available.x() + (available.width() - self.width()) // 2
         y = available.y() + available.height() - self.height() - 10
@@ -202,6 +210,7 @@ class MicIndicator:
             self._app = QApplication.instance()
         self._window = MicIndicatorWindow()
         def on_show():
+            self._window._reposition()
             self._window.show()
         self._signals.update_level.connect(self._window.set_level)
         self._signals.set_state.connect(self._window.set_state)

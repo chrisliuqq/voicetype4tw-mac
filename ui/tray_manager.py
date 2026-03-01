@@ -66,14 +66,31 @@ class TrayManager:
 
                 def _rebuild_menu(self):
                     self.menu.clear()
-                    for item in self.items:
+                    self._add_items_to_menu(self.menu, self.items)
+
+                def _add_items_to_menu(self, menu_obj, items):
+                    for item in items:
                         name = item['label']
                         callback = item['callback']
                         checked = item.get('checked', False)
-                        btn = rumps.MenuItem(name, callback=callback)
-                        btn.state = 1 if checked else 0
-                        self.menu.add(btn)
-                    self.menu.add(rumps.MenuItem("結束", callback=lambda _: rumps.quit_application()))
+                        submenu = item.get('submenu', None)
+
+                        if name == "---":
+                            menu_obj.add(None)
+                            continue
+
+                        if submenu:
+                            # Create a nested menu item
+                            sub_menu_item = rumps.MenuItem(name)
+                            menu_obj.add(sub_menu_item)
+                            # rumps doesn't have a direct "sub-menu" object, 
+                            # we just add items to the MenuItem itself as if it were a menu
+                            self._add_items_to_menu(sub_menu_item, submenu)
+                        else:
+                            btn = rumps.MenuItem(name, callback=callback)
+                            if checked is not None:
+                                btn.state = 1 if checked else 0
+                            menu_obj.add(btn)
 
                 @rumps.timer(0.1)
                 def drive_tick(self, _):

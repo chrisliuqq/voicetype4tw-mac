@@ -7,6 +7,7 @@ import time
 import sys
 import os
 import certifi
+import platform
 from pathlib import Path
 
 # Fix SSL certificate issue in py2app bundles when using httpx/huggingface_hub
@@ -14,7 +15,8 @@ os.environ["SSL_CERT_FILE"] = certifi.where()
 
 # ── Debug Log 寫入檔案 (App 版除錯用) ──────────────────────────────
 import logging
-_log_dir = Path.home() / "Library" / "Application Support" / "VoiceType4TW"
+from paths import APP_DATA_DIR
+_log_dir = APP_DATA_DIR
 _log_dir.mkdir(parents=True, exist_ok=True)
 _log_file = _log_dir / "debug.log"
 logging.basicConfig(

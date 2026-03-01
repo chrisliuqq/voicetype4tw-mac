@@ -94,6 +94,10 @@ class MicIndicatorWindow(QWidget):
 
     def set_state(self, state: str):
         self._state = state
+        if state == "done":
+            self.trigger_flash()
+            # "完成" 狀態多留一會兒
+            QTimer.singleShot(1200, self.hide)
         self.update()
 
     def set_label_suffix(self, suffix: str):

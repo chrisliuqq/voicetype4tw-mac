@@ -388,9 +388,12 @@ class VoiceTypeApp:
                     found = True; break
             if found:
                 save_config(self.config)
+                self.indicator.set_state("done")
                 self.indicator.flash()
+                if self.config.get("completion_sound", True):
+                    self.indicator.play_beep()
                 self.injector.inject(f"「已套用 {name} 格式。」")
-                time.sleep(0.4); self.indicator.hide()
+                # Wait briefly for user to see result
                 return
 
         # 3. 儲存模板：儲存為 [客訴回覆] 版本 [B]
@@ -399,9 +402,11 @@ class VoiceTypeApp:
             name = f"{save_match.group(1).strip()}_{save_match.group(2).strip()}"
             if self._last_final_text:
                 self._on_save_template(name, self._last_stt_text, self._last_final_text)
+                self.indicator.set_state("done")
                 self.indicator.flash()
+                if self.config.get("completion_sound", True):
+                    self.indicator.play_beep()
                 self.injector.inject(f"「已將上次輸出存為範例模板：{name}」")
-                time.sleep(0.4); self.indicator.hide()
                 return
 
         # 4. 回用模板：用 [客訴回覆] 版本 [B] 來幫我寫
@@ -413,9 +418,11 @@ class VoiceTypeApp:
             if tpl_path.exists():
                 with open(tpl_path, "r", encoding="utf-8") as f:
                     self._active_template = json.load(f).get("output", "")
+                self.indicator.set_state("done")
                 self.indicator.flash()
+                if self.config.get("completion_sound", True):
+                    self.indicator.play_beep()
                 self.injector.inject(f"「好的，我將參考 {name} 的風格來為您撰寫。」")
-                time.sleep(0.4); self.indicator.hide()
                 return
 
         # 自動學習詞彙（背景）
@@ -524,9 +531,9 @@ class VoiceTypeApp:
             if llm_mode == "fast":
                 # 先注入 STT 原文，背景 LLM 潤飾後替換
                 self.indicator.set_state("done")
+                if self.config.get("completion_sound", True):
+                    self.indicator.play_beep()
                 self.injector.inject(_fix_punctuation(stt_text))
-                time.sleep(0.4)
-                self.indicator.hide()
 
                 def _refine_and_replace(raw, prompt, wrapped_msg):
                     t0 = time.time()
@@ -585,17 +592,10 @@ class VoiceTypeApp:
 
         # ── 注入文字 ──────────────────────────────────────────────
         self.indicator.set_state("done")
+        if self.config.get("completion_sound", True):
+            self.indicator.play_beep()
+            
         self.injector.inject(_fix_punctuation(final_text))
-        
-        # fallback: 複製到剪貼簿
-        try:
-            import pyperclip
-            pyperclip.copy(final_text)
-        except Exception:
-            pass
-
-        time.sleep(0.4)
-        self.indicator.hide()
         
         if self.config.get("debug_mode"):
             print(f"[main] Injection done. Mode was: {mode}")
@@ -799,7 +799,7 @@ class VoiceTypeApp:
              icon_path = None # Fallback
 
         self.tray = TrayManager(
-            title="VoiceType4TW v2.5.0",
+            title="VoiceType4TW v2.6.0",
             icon_path=icon_path,
             menu_items=self.menu_bar.get_menu_items()
         )

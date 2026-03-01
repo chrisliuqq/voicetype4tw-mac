@@ -23,7 +23,7 @@ WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
 TRIGGER_MODES = ["push_to_talk", "toggle"]
 HOTKEYS = ["right_option", "left_option", "right_ctrl", "f13", "f14", "f15"]
 LLM_MODES = ["replace", "fast"]
-BUILD_ID = "BUILD-0301"  # 每次打包前更新這個字串，確認跑的是新版
+BUILD_ID = "BUILD-0301-B"  # v2.6.0 build
 
 from hotkey.listener import key_to_str, str_to_key
 
@@ -244,9 +244,9 @@ class SettingsWindow(QMainWindow):
         # 根據語言動態設定視窗標題
         lang = self.config.get("language", "zh")
         if "zh" in lang:
-            self.setWindowTitle("嘴砲輸入法 2.5.0 Pro")
+            self.setWindowTitle("嘴砲輸入法 2.6.0 Pro")
         else:
-            self.setWindowTitle("VoiceType4TW Pro 2.5.0")
+            self.setWindowTitle("VoiceType4TW Pro 2.6.0")
         
         # 設定啟動頁面
         if 0 <= start_page < len(self.sidebar_buttons):
@@ -254,7 +254,7 @@ class SettingsWindow(QMainWindow):
             QTimer.singleShot(10, lambda: self._on_sidebar_changed(start_page))
 
     def _setup_ui(self):
-        self.setWindowTitle("VoiceType4TW Pro 2.5.0")
+        self.setWindowTitle("VoiceType4TW Pro 2.6.0")
         self.setMinimumSize(900, 680)
         
         # Premium CSS
@@ -362,12 +362,13 @@ class SettingsWindow(QMainWindow):
         lbl_en.setStyleSheet("font-family: 'Myriad Pro'; font-weight: bold; font-size: 28px; color: white;")
         lbl_en.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        lbl_mac = QLabel("Mac version")
-        lbl_mac.setStyleSheet("font-family: 'Myriad Pro'; font-style: italic; font-size: 14px; color: #8a8d91;")
-        lbl_mac.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        os_ver = "Mac version" if platform.system() == "Darwin" else "Windows version"
+        lbl_os = QLabel(os_ver)
+        lbl_os.setStyleSheet("font-family: 'Myriad Pro'; font-style: italic; font-size: 14px; color: #8a8d91;")
+        lbl_os.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         logo_vbox.addWidget(lbl_en)
-        logo_vbox.addWidget(lbl_mac)
+        logo_vbox.addWidget(lbl_os)
         sidebar_layout.addWidget(logo_container)
 
         # Menu List - Use Layout instead of QListWidget for perfect visibility
@@ -397,7 +398,7 @@ class SettingsWindow(QMainWindow):
         sidebar_layout.addStretch()
         
         # Credits and SNS at Bottom
-        credit_box = QLabel(f"v2.5.0 Pro | {BUILD_ID}\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
+        credit_box = QLabel(f"v2.6.0 Pro | {BUILD_ID}\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
         credit_box.setStyleSheet("color: #555; font-size: 10px; margin-left: 25px; line-height: 1.2;")
         sidebar_layout.addWidget(credit_box)
         
@@ -908,6 +909,10 @@ class SettingsWindow(QMainWindow):
         self.auto_paste.setChecked(self.config.get("auto_paste", True))
         layout.addWidget(self.auto_paste)
         
+        self.completion_sound = QCheckBox("錄音完成時播放音效 (Play sound on completion)")
+        self.completion_sound.setChecked(self.config.get("completion_sound", True))
+        layout.addWidget(self.completion_sound)
+        
         self.debug_mode = QCheckBox("啟用詳細日誌輸出 (Debug logging)")
         self.debug_mode.setChecked(self.config.get("debug_mode", False))
         layout.addWidget(self.debug_mode)
@@ -1170,6 +1175,7 @@ class SettingsWindow(QMainWindow):
         self.config["magic_trigger"] = self.magic_trigger.text().strip() or "嘿 VoiceType"
         self.config["hotkey_ptt"] = self.btn_ptt.key_str
         self.config["auto_paste"] = self.auto_paste.isChecked()
+        self.config["completion_sound"] = self.completion_sound.isChecked()
         self.config["debug_mode"] = self.debug_mode.isChecked()
         self.config["debug_demo_mode"] = self.debug_demo_mode.isChecked()
 

@@ -315,10 +315,23 @@ pyinstaller --onefile --windowed --name VoiceType4TW-Win --icon assets/icon.ico 
 - **資安友善設計**：比對與替換邏輯完全在本地運行，敏感資訊（如地址、帳號）不會上傳至雲端 LLM（除非配合使用 AI 潤飾且關鍵字已被替換）。
 - **長短語優先**：採長度遞減搜尋，確保複合詞優先匹配。
 
+### 💎 VoiceType4TW v2.6.0 Pro (2026-03-01)
+- **多螢幕動態跟隨**：指標視窗自動聚焦滑鼠所在螢幕。
+- **完成感官優化**：亮藍色閃爍特效 + 完成提示音 (開關制)。
+- **OS 動態偵測**：設定頁面側邊欄與「關於」視窗自動依 OS 顯示正確標籤。
+- **內部同步橋接**：建立 `AI_MEMORY.md` 私密塊與 `INTERNAL_TODO.md` (GitIgnore) 橋接機制。
+
 ### ✅ macOS 穩定性修復 (事件迴圈衝突) (2026-03-01)
 - **事件驅動標準化**：修正了 `rumps` (Cocoa) 與 `PyQt6` 事件迴圈並存時的崩潰問題。
 - **內部 Timer 註冊**：將 `processEvents()` 的驅動邏輯從 `main.py` 移入 `TrayManager` 內部，確保 `rumps.timer` 能夠正確掛載到 App 實例上。
 - **防止 SIGABRT**：解決了使用者在視窗內點擊鍵盤時，因為 Qt 失去主線程驅動而導出的核心崩潰問題。
+
+### 🔒 內部開發同步橋接 (Private Sync Bridge)
+- **跨平台狀態記錄**：為了在多機環境同步 `.gitignore` 排除的私密進度，以此區塊作為資訊橋樑。
+- **當前私密進度**：
+    - `[INTERNAL_PLAN] Trigger Mode Implementation (v2.6 roadmap)`
+    - `[INTERNAL_PLAN] Multi-Monitor Positional Memory`
+    - `[STATUS] v2.6.0 Core Features Deployed to Main`
 
 ---
 

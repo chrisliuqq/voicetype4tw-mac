@@ -24,6 +24,7 @@ SOUL_BASE_PATH = SOUL_DIR / "base.md"
 SOUL_SCENARIO_DIR = SOUL_DIR / "scenario"
 SOUL_FORMAT_DIR = SOUL_DIR / "format"
 SOUL_TEMPLATE_DIR = SOUL_DIR / "templates"
+SOUL_SNIPPET_DIR = SOUL_DIR / "snippets"
 
 # 舊版路徑 (用於遷移)
 OLD_SOUL_PATH = APP_DATA_DIR / "soul.md"
@@ -46,6 +47,7 @@ def _initialize_data():
     SOUL_SCENARIO_DIR.mkdir(parents=True, exist_ok=True)
     SOUL_FORMAT_DIR.mkdir(parents=True, exist_ok=True)
     SOUL_TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
+    SOUL_SNIPPET_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. 舊版單一 soul.md 遷移至 soul/base.md
     if OLD_SOUL_PATH.exists() and not SOUL_BASE_PATH.exists():

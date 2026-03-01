@@ -310,6 +310,11 @@ pyinstaller --onefile --windowed --name VoiceType4TW-Win --icon assets/icon.ico 
 - **熱鍵相容性**：`hotkey/listener.py` 新增 Windows 分支，利用 `pynput` 進行全局監聽。
 - **UI 兼容性**：修正了 UI 字體（Microsoft JhengHei）與音效回饋的平台差異。
 
+### ✅ 語音快捷短語 (Voice Snippets / Local Expansion) (2026-03-01)
+- **100% 地端處理**：在 STT 完成後，程式會自動掃描 `soul/snippets/*.md`，將匹配到「檔名」的關鍵字即時替換為「檔案內容」。
+- **資安友善設計**：比對與替換邏輯完全在本地運行，敏感資訊（如地址、帳號）不會上傳至雲端 LLM（除非配合使用 AI 潤飾且關鍵字已被替換）。
+- **長短語優先**：採長度遞減搜尋，確保複合詞優先匹配。
+
 ---
 
 ## 15. 一鍵安裝腳本 install.sh (2026-03-01)

@@ -295,6 +295,10 @@ class VoiceTypeApp:
         stt_start = time.time()
         raw_stt = self.stt.transcribe(audio_bytes, language=self.config.get("language", "zh"))
         stt_text = _fix_punctuation(raw_stt)
+        
+        # ── 1.5. Apply Voice Snippets (Local Expansion) ────────────────
+        stt_text = self._apply_snippets(stt_text)
+        
         stt_elapsed = time.time() - stt_start
 
         if self.config.get("debug_mode"):
@@ -629,6 +633,40 @@ class VoiceTypeApp:
                 ).start()
             except Exception:
                 pass
+
+    def _apply_snippets(self, text: str) -> str:
+        """
+        Scans soul/snippets/*.md and replaces filenames with their content if found in text.
+        This runs 100% locally and is never sent to the cloud (private/secure).
+        """
+        if not SOUL_SNIPPET_DIR.exists():
+            return text
+            
+        modified_text = text
+        try:
+            # We sort by filename length descending so longer phrases match first 
+            # (e.g. "收件人資訊完整版" matches before "收件人資訊")
+            snippets_files = sorted(SOUL_SNIPPET_DIR.glob("*.md"), key=lambda x: len(x.stem), reverse=True)
+            
+            for snippet_path in snippets_files:
+                keyword = snippet_path.stem.strip()
+                if not keyword:
+                    continue
+                    
+                # Robust match: check if keyword exists in text
+                if keyword in modified_text:
+                    try:
+                        content = snippet_path.read_text(encoding='utf-8').strip()
+                        if content:
+                            if self.config.get("debug_mode"):
+                                print(f"[snippet] Local MATCH found: '{keyword}' -> expanded locally.")
+                            modified_text = modified_text.replace(keyword, content)
+                    except Exception as e:
+                        print(f"[snippet] Error reading {snippet_path.name}: {e}")
+        except Exception as e:
+            print(f"[snippet] Error processing snippets: {e}")
+            
+        return modified_text
 
     def _on_toggle_llm(self):
         self.config["llm_enabled"] = not self.config.get("llm_enabled", False)

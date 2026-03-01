@@ -4,6 +4,7 @@ Features tabs for General, STT/LLM, Vocab/Memory, and Stats.
 """
 import sys
 import os
+import platform
 from pathlib import Path
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 

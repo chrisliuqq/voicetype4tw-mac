@@ -35,14 +35,16 @@ class AboutDialog(QDialog):
         layout.addWidget(icon_label)
 
         # App Name
-        name_label = QLabel("VoiceType4TW-Mac")
-        name_label.setFont(QFont("PingFang TC", 18, QFont.Weight.Bold))
+        import platform
+        font_family = "PingFang TC" if platform.system() == "Darwin" else "Microsoft JhengHei"
+        name_label = QLabel("VoiceType4TW")
+        name_label.setFont(QFont(font_family, 18, QFont.Weight.Bold))
         name_label.setStyleSheet(f"color: {text_color};")
         name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(name_label)
 
         # Version
-        version_label = QLabel("Version 2.2 Pro")
+        version_label = QLabel("Version 2.5.0 Pro")
         version_label.setStyleSheet("color: #888; font-size: 12px;")
         version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(version_label)

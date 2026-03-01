@@ -21,7 +21,8 @@ class OpenRouterLLM(BaseLLM):
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "user", "content": f"{prompt}\n\n{text}"}
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": text}
             ],
         }
         try:

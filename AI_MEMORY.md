@@ -279,7 +279,100 @@ pyinstaller --onefile --windowed --name VoiceType4TW-Win --icon assets/icon.ico 
    - 麥克風偵測恢復實時查詢（透過 `objc` 查詢 `AVFoundation`），且保證不觸發彈窗。
 
 ### 📌 開發者備忘：移植時的注意事項
-- 當前 `BUILD_ID` 為 `BUILD-0228N6`。
+- 當前 `BUILD_ID` 為 `BUILD-0301`。
+- 版號提升至 `v2.5.0`。
 - `main.py` 的 `_load_models_async` 是所有平台都需要保留的靈魂邏輯，能大幅提升 App 專業感。
 - `ui/settings_window.py` 內的 `_is_model_present` 路徑在 Windows 移植時需確認是否符合 `huggingface_hub` 的預設位置。
+
+---
+
+## 14. v2.5.0 重大更新紀錄 (2026-03-01)
+
+### ✅ 三層式靈魂系統 (Triple-Layer Soul)
+- **結構化 Prompt**：將 `base.md` (基礎人格), `scenario/*.md` (場景建議), `format/*.md` (輸出格式) 三者疊加，實現極高靈活性。
+- **旗艦預設集**：新增帶有 Emoji 的專業預設情境 (💼 商務回應, 🌐 商務英文, 🤝 情商大師, 📱 社群貼文)，並實作自動同步邏輯。
+
+### ✅ 核心穩定性大升級 (Quartz 引擎)
+- **地雷修復**：徹底解決了 `pynput` 在 macOS 15+ 上按下 CapsLock 會導致 `dispatch_assert_queue` 閃退的問題。
+- **原生代碼**：改用低階 `Quartz (CGEventTap)` 直接監聽硬體事件，不依賴不穩定的 NSEvent 輔助功能，效能與穩定性大幅提升。
+
+### ✅ 語音驅動 AI 指令 (AI Action Mode)
+- **魔術語識別**：實作「嘿 VoiceType」等自定義咒語識別。
+- **動作派發**：內建天氣、計算、搜尋、開啟網頁等實用自動化動作。
+
+### ✅ 測試與除錯工具 (Developer Tools)
+- **情境模擬 Demo 版**：在設置中開啟後，單次語音輸入會自動跑遍所有 `scenario/*.md` 情境，並以分隔線一字排開輸出。這對於測試 Prompt 穩定性與人格差異極其有效。
+
+### ✅ PC 版 (Windows) 移植支援 (2026-03-01)
+- **路徑標準化**：`paths.py` 現在能自動識別 `%APPDATA%` (Win) 與 `Application Support` (Mac)。
+- **統一系統托盤**：實作 `ui/tray_manager.py` 抽象層，在 Mac 使用 `rumps`，在 Windows 使用 `pystray`。
+- **跨平台生命週期**：`main.py` 已解耦 `rumps.run()`，在 Windows 會啟動標準 Qt 事件迴圈。
+- **熱鍵相容性**：`hotkey/listener.py` 新增 Windows 分支，利用 `pynput` 進行全局監聽。
+- **UI 兼容性**：修正了 UI 字體（Microsoft JhengHei）與音效回饋的平台差異。
+
+---
+
+## 15. 一鍵安裝腳本 install.sh (2026-03-01)
+
+### 功能
+使用者只需在終端機貼一行指令即可完成所有安裝：
+```bash
+curl -fsSL https://raw.githubusercontent.com/jfamily4tw/voicetype4tw-mac/main/install.sh | bash
+```
+
+### 腳本流程（7 步）
+1. 檢查 macOS + 偵測 Apple Silicon
+2. 安裝/檢查 Homebrew
+3. 安裝/檢查 Python 3.10+
+4. `brew install portaudio`
+5. `git clone` 或 `git pull` 更新
+6. 建立 `venv` + `pip install -r requirements.txt`
+7. 建立啟動捷徑 `start.sh` 和全域指令 `~/.local/bin/voicetype`
+
+### 相關檔案
+- `install.sh` — 主安裝腳本
+- `requirements.txt` — pip 依賴清單
+- README.md 已加入一鍵安裝教學
+
+---
+
+## 15. App 打包 codesign 突破 (2026-03-01)
+
+### 問題
+py2app 打包後：
+1. 某些 dylib 被 strip 截斷損壞（libxcb, liblcms2, liblzma），導致 `codesign` 失敗
+2. libssl/libcrypto 被複製為 x86_64 架構，arm64 載入崩潰
+3. 整個 bundle 無法完成簽名 → TCC 撤銷權限
+
+### 解決方案（pack_release.sh）
+1. `setup.py` 加入 `'strip': False` 避免截斷
+2. `install_name_tool` 讓 `_ssl.so` 指回系統 Python Framework 絕對路徑，不複製 libssl/libcrypto
+3. 刪除 X11 相關壞掉的 dylib（libxcb, liblcms2, liblzma）— macOS 不需要
+4. 逐一簽名所有 dylib/so，無法簽名的自動刪除
+5. `entitlements.plist` 嵌入麥克風、自動化、動態庫載入權限
+6. 最後 adhoc 簽名整個 bundle → **首次通過 `codesign --verify: valid on disk`**
+
+### 仍未解決
+- TCC 仍會在重新打包後撤銷輔助使用權限（adhoc 簽名的本質限制）
+- 使用者需手動到設定裡用「減號」刪除舊紀錄，重新授權
+- 終極解法仍是 Apple Developer ID ($99/年)
+
+---
+
+## 16. v2.5 開發藍圖：靈魂快切 + 模板回用 + AI 助理
+
+### 三層式靈魂系統
+- **base.md**：去贅詞鐵律（就是、然後、你知道嗎...）+ 人格設定，永遠生效
+- **scenario/*.md**：情境模板（客訴回覆、IG貼文、廠商報價、商務回應、老闆簡報、高情商回話）
+- **format/*.md**：輸出格式（自然段落、社群貼文、書面稿、簡報稿、Email）
+- Menu Bar 一鍵切換，也可用魔術語切
+
+### 模板存檔與回用
+- 當輸出好用時，講「儲存為客訴回覆版本B」→ 存為 `soul/templates/*.json`
+- 下次講「用客訴回覆版本B來幫我寫」→ 讀取模板作 few-shot example 注入 LLM
+
+### 語音驅動 AI 指令模式
+- 進入指令模式後，語音不再打字，而是執行動作
+- v2.5 先做基礎版：查天氣、查時間、計算、開網頁、Google 搜尋
+- v3.0 展望：寄信、整理會議紀錄、存備忘錄
 

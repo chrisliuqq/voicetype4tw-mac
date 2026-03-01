@@ -16,7 +16,7 @@ from PyQt6.QtGui import QFont, QIcon, QColor, QPainter, QLinearGradient, QBrush,
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import load_config, save_config
-from paths import SOUL_PATH
+from paths import SOUL_BASE_PATH, SOUL_SCENARIO_DIR, SOUL_FORMAT_DIR, SOUL_TEMPLATE_DIR
 STT_ENGINES = ["local_whisper", "mlx_whisper", "groq", "gemini", "openrouter"]
 LLM_ENGINES = ["ollama", "openai", "claude", "openrouter", "gemini", "deepseek", "qwen"]
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large"]
@@ -45,8 +45,10 @@ class SidebarButton(QPushButton):
         super().__init__(parent)
         self.index = index
         self.setCheckable(True)
+        import platform
+        font_family = "Taipei Sans TC Beta" if platform.system() == "Darwin" else "Microsoft JhengHei"
         self.setText(f"{icon_text}  {label}")
-        self.setFont(QFont("Taipei Sans TC Beta", 16, QFont.Weight.Medium))
+        self.setFont(QFont(font_family, 16, QFont.Weight.Medium))
         self.setFixedHeight(60)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.clicked.connect(lambda: on_click(self.index))
@@ -242,9 +244,9 @@ class SettingsWindow(QMainWindow):
         # 根據語言動態設定視窗標題
         lang = self.config.get("language", "zh")
         if "zh" in lang:
-            self.setWindowTitle("嘴砲輸入法 2.3.0 Pro")
+            self.setWindowTitle("嘴砲輸入法 2.5.0 Pro")
         else:
-            self.setWindowTitle("VoiceType4TW Mac 2.3.0 Pro")
+            self.setWindowTitle("VoiceType4TW Pro 2.5.0")
         
         # 設定啟動頁面
         if 0 <= start_page < len(self.sidebar_buttons):
@@ -252,7 +254,7 @@ class SettingsWindow(QMainWindow):
             QTimer.singleShot(10, lambda: self._on_sidebar_changed(start_page))
 
     def _setup_ui(self):
-        self.setWindowTitle("VoiceType4TW Mac 2.3.0 Pro")
+        self.setWindowTitle("VoiceType4TW Pro 2.5.0")
         self.setMinimumSize(900, 680)
         
         # Premium CSS
@@ -395,7 +397,7 @@ class SettingsWindow(QMainWindow):
         sidebar_layout.addStretch()
         
         # Credits and SNS at Bottom
-        credit_box = QLabel(f"v2.4.0 Pro | {BUILD_ID}\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
+        credit_box = QLabel(f"v2.5.0 Pro | {BUILD_ID}\n主要開發者：吉米丘\n協助開發者：Gemini, Nebula")
         credit_box.setStyleSheet("color: #555; font-size: 10px; margin-left: 25px; line-height: 1.2;")
         sidebar_layout.addWidget(credit_box)
         
@@ -647,28 +649,177 @@ class SettingsWindow(QMainWindow):
         self.openrouter_key = self._add_grid_row(layout, "OpenRouter / DeepSeek Key", QLineEdit())
         self.openrouter_key.setEchoMode(QLineEdit.EchoMode.Password)
 
+        layout.addWidget(self._page_section_header("🪄 AI 魔術指令"))
+        self.magic_trigger = self._add_grid_row(layout, "啟動咒語 (例如: 嘿 助理)", QLineEdit())
+        self.magic_trigger.setPlaceholderText("預設為: 嘿 VoiceType")
+
         container.setLayout(layout)
         page.setWidget(container)
         return page
 
     def _create_soul_page(self):
+        from PyQt6.QtWidgets import QTabWidget
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setSpacing(20)
+        layout.setSpacing(10)
 
-        layout.addWidget(self._page_section_header("✨ AI 靈魂設定 (人格與提示詞)"))
-        lbl_info = QLabel("在這裡定義 AI 的個性、對話風格以及特殊的翻譯/潤飾指令。")
-        lbl_info.setStyleSheet("color: #8a8d91; font-size: 13px;")
-        layout.addWidget(lbl_info)
-
+        layout.addWidget(self._page_section_header("✨ AI 靈魂與情境治理"))
+        
+        self.soul_tabs = QTabWidget()
+        self.soul_tabs.setStyleSheet("""
+            QTabWidget::pane { border: 1px solid rgba(255,255,255,10); border-radius: 8px; background: rgba(30,30,40,100); }
+            QTabBar::tab { background: transparent; color: #8a8d91; padding: 10px 20px; font-size: 14px; }
+            QTabBar::tab:selected { color: #7c4dff; border-bottom: 2px solid #7c4dff; font-weight: bold; }
+        """)
+        
+        # 1. 基底靈魂
+        base_tab = QWidget()
+        base_layout = QVBoxLayout(base_tab)
         self.soul_prompt = QTextEdit()
         self.soul_prompt.setFont(QFont("Monaco", 12))
-        self.soul_prompt.setPlaceholderText("輸入 AI 的靈魂提示詞...")
-        self.soul_prompt.setMinimumHeight(400) # 原本預設沒有或是200，現在加上明確的高度讓它變為兩倍
-        layout.addWidget(self.soul_prompt)
+        self.soul_prompt.setPlaceholderText("輸入 AI 的基底靈魂提示詞 (人格、風格、去贅詞規則)...")
+        self.soul_prompt.setStyleSheet("background: rgba(20,20,30,150); border: 1px solid rgba(255,255,255,10); border-radius: 8px; color: #eee;")
+        base_layout.addWidget(self.soul_prompt)
+        self.soul_tabs.addTab(base_tab, "🏠 基底靈魂")
 
-        layout.addStretch()
+        # 2. 情境瀏覽
+        scenario_tab = self._create_file_list_tab(SOUL_SCENARIO_DIR, "這裡存放不同場景的提示詞，例如：客訴、IG 貼文、商務簡報。")
+        self.soul_tabs.addTab(scenario_tab, "🎭 情境模板")
+
+        # 3. 格式瀏覽
+        format_tab = self._create_file_list_tab(SOUL_FORMAT_DIR, "這裡決定輸出的格式，例如：電子郵件、表格、自然段落。")
+        self.soul_tabs.addTab(format_tab, "📝 輸出格式")
+
+        # 4. 模板管理
+        template_tab = self._create_file_list_tab(SOUL_TEMPLATE_DIR, "這裡存放您儲存過的「好用輸出範例」。", is_json=True)
+        self.soul_tabs.addTab(template_tab, "📌 我的模板")
+
+        layout.addWidget(self.soul_tabs)
         return page
+
+    def _create_file_list_tab(self, directory: Path, desc: str, is_json: bool = False):
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # 頂部操作區
+        controls_layout = QVBoxLayout()
+        desc_lbl = QLabel(desc)
+        desc_lbl.setStyleSheet("color: #888; font-size: 12px;")
+        controls_layout.addWidget(desc_lbl)
+        
+        create_layout = QHBoxLayout()
+        new_item_name = QLineEdit()
+        new_item_name.setPlaceholderText("輸入新項目名稱...")
+        new_item_name.setStyleSheet("background: rgba(0,0,0,50); border: 1px solid #444; border-radius: 4px; padding: 4px; color: #fff;")
+        
+        btn_add = QPushButton("➕ 新增項目")
+        btn_add.setFixedWidth(100)
+        btn_add.setStyleSheet("background: #2e7d32; color: white; padding: 5px; border-radius: 4px;")
+        
+        btn_del = QPushButton("🗑 刪除所選")
+        btn_del.setFixedWidth(100)
+        btn_del.setStyleSheet("background: #c62828; color: white; padding: 5px; border-radius: 4px;")
+        
+        create_layout.addWidget(new_item_name)
+        create_layout.addWidget(btn_add)
+        create_layout.addWidget(btn_del)
+        controls_layout.addLayout(create_layout)
+        
+        layout.addLayout(controls_layout)
+        
+        lst = QListWidget()
+        lst.setStyleSheet("background: rgba(20,20,30,150); border: 1px solid rgba(255,255,255,10); border-radius: 8px; color: #eee;")
+        layout.addWidget(lst)
+        
+        def refresh():
+            lst.clear()
+            if not directory.exists(): return
+            ext = "*.json" if is_json else "*.md"
+            for f in sorted(directory.glob(ext)):
+                lst.addItem(f.name)
+        
+        QTimer.singleShot(100, refresh)
+        
+        # 內容編輯區 (不再是純預覽，改為可編輯)
+        layout.addWidget(QLabel("內容編輯："))
+        editor = QTextEdit()
+        editor.setFont(QFont("Monaco", 11))
+        editor.setStyleSheet("background: rgba(40,40,50,150); color: #fff; border: 1px solid rgba(255,255,255,20); border-radius: 8px;")
+        layout.addWidget(editor)
+        
+        btn_save = QPushButton("💾 儲存修改")
+        btn_save.setStyleSheet("background: #7c4dff; color: white; padding: 10px; border-radius: 6px; font-weight: bold;")
+        btn_save.hide() # 初始隱藏
+        layout.addWidget(btn_save)
+        
+        def on_item_clicked(item):
+            fpath = directory / item.text()
+            if fpath.exists():
+                text = fpath.read_text(encoding="utf-8")
+                if is_json:
+                    import json
+                    try:
+                        data = json.loads(text)
+                        text = json.dumps(data, indent=2, ensure_ascii=False)
+                    except: pass
+                editor.setPlainText(text)
+                btn_save.show()
+        
+        def on_save():
+            item = lst.currentItem()
+            if not item: return
+            fpath = directory / item.text()
+            try:
+                fpath.write_text(editor.toPlainText(), encoding="utf-8")
+                QMessageBox.information(self, "成功", f"「{item.text()}」已儲存。")
+            except Exception as e:
+                QMessageBox.critical(self, "錯誤", f"儲存失敗：{e}")
+        
+        def on_add():
+            name = new_item_name.text().strip()
+            if not name:
+                QMessageBox.warning(self, "提示", "請輸入項目名稱。")
+                return
+            
+            filename = f"{name}.json" if is_json else f"{name}.md"
+            fpath = directory / filename
+            if fpath.exists():
+                QMessageBox.warning(self, "警告", "名稱已存在！")
+                return
+            
+            try:
+                fpath.write_text("# 新項目\n在此輸入設定...", encoding="utf-8")
+                new_item_name.clear()
+                refresh()
+                # 選中新項目
+                items = lst.findItems(filename, Qt.MatchFlag.MatchExactly)
+                if items:
+                    lst.setCurrentItem(items[0])
+                    on_item_clicked(items[0])
+            except Exception as e:
+                QMessageBox.critical(self, "錯誤", f"建立失敗：{e}")
+
+        def on_delete():
+            item = lst.currentItem()
+            if not item: return
+            reply = QMessageBox.question(self, "確認刪除", f"確定要刪除「{item.text()}」嗎？", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
+                (directory / item.text()).unlink()
+                refresh()
+                editor.clear()
+                btn_save.hide()
+
+        lst.itemClicked.connect(on_item_clicked)
+        btn_add.clicked.connect(on_add)
+        btn_del.clicked.connect(on_delete)
+        btn_save.clicked.connect(on_save)
+        
+        btn_open = QPushButton("📂 在 Finder 中打開資料夾")
+        btn_open.setStyleSheet("background: transparent; border: 1px solid #3d4452; color: #888; font-size: 11px;")
+        btn_open.clicked.connect(lambda: os.system(f"open '{directory}'"))
+        layout.addWidget(btn_open)
+
+        return tab
 
     def _create_vocab_mem_page(self):
         page = QWidget()
@@ -727,7 +878,7 @@ class SettingsWindow(QMainWindow):
         layout.addWidget(self._page_section_header("詳細分析數據"))
         
         self.stats_tree = QTreeWidget()
-        self.stats_tree.setHeaderLabels(["範圍", "對話數", "語音長度", "轉錄字數"])
+        self.stats_tree.setHeaderLabels(["範圍", "對話數", "語音長度", "轉錄字數", "省下時間"])
         layout.addWidget(self.stats_tree)
         
         self.btn_refresh_stats = QPushButton("重新整理數據")
@@ -761,6 +912,10 @@ class SettingsWindow(QMainWindow):
         self.debug_mode.setChecked(self.config.get("debug_mode", False))
         layout.addWidget(self.debug_mode)
 
+        self.debug_demo_mode = QCheckBox("情境模擬 Demo 版 (Debug Scenario Demo Mode)")
+        self.debug_demo_mode.setChecked(self.config.get("debug_demo_mode", False))
+        layout.addWidget(self.debug_demo_mode)
+
         layout.addStretch()
         return page
 
@@ -780,8 +935,8 @@ class SettingsWindow(QMainWindow):
 
     # --- Data and Logic ---
     def _load_data(self):
-        if SOUL_PATH.exists():
-            self.soul_prompt.setPlainText(SOUL_PATH.read_text(encoding="utf-8"))
+        if SOUL_BASE_PATH.exists():
+            self.soul_prompt.setPlainText(SOUL_BASE_PATH.read_text(encoding="utf-8"))
         
         # Load from config
         stt_val = self.config.get("stt_engine", "local_whisper")
@@ -810,6 +965,7 @@ class SettingsWindow(QMainWindow):
         self.llm_mode.setCurrentText(self.config.get("llm_mode", "replace"))
         self.openai_key.setText(self.config.get("openai_api_key", ""))
         self.openrouter_key.setText(self.config.get("openrouter_api_key", ""))
+        self.magic_trigger.setText(self.config.get("magic_trigger", "嘿 VoiceType"))
 
         self._refresh_vocab()
         self._refresh_learned_vocab()
@@ -969,9 +1125,20 @@ class SettingsWindow(QMainWindow):
                 self.lbl_time_saved.setText(f"{saved_mins/60.0:.1f} 小時")
             self.lbl_total_chars_desc.setText(f"累計辨識 {total_chars} 字")
             
-            self.stats_tree.addTopLevelItem(QTreeWidgetItem(["今日", str(s["today"]["sessions"]), f"{s['today']['duration']}s", str(s["today"]["chars"])]))
-            self.stats_tree.addTopLevelItem(QTreeWidgetItem(["本週", str(s["week"]["sessions"]), f"{s['week']['duration']}s", str(s["week"]["chars"])]))
-            self.stats_tree.addTopLevelItem(QTreeWidgetItem(["累積", str(s["total"]["sessions"]), f"{s['total']['duration']}s", str(s["total"]["chars"])]))
+            def format_saved(chars):
+                mins = chars / 40.0
+                if mins < 60: return f"{mins:.1f}m"
+                return f"{mins/60.0:.1f}h"
+
+            self.stats_tree.addTopLevelItem(QTreeWidgetItem([
+                "今日", str(s["today"]["sessions"]), f"{s['today']['duration']}s", str(s["today"]["chars"]), format_saved(s["today"]["chars"])
+            ]))
+            self.stats_tree.addTopLevelItem(QTreeWidgetItem([
+                "本週", str(s["week"]["sessions"]), f"{s['week']['duration']}s", str(s["week"]["chars"]), format_saved(s["week"]["chars"])
+            ]))
+            self.stats_tree.addTopLevelItem(QTreeWidgetItem([
+                "累積", str(s["total"]["sessions"]), f"{s['total']['duration']}s", str(s["total"]["chars"]), format_saved(s["total"]["chars"])
+            ]))
         except: pass
 
     def _add_vocab(self):
@@ -1000,12 +1167,14 @@ class SettingsWindow(QMainWindow):
         self.config["llm_mode"] = self.llm_mode.currentText()
         self.config["openai_api_key"] = self.openai_key.text().strip()
         self.config["openrouter_api_key"] = self.openrouter_key.text().strip()
+        self.config["magic_trigger"] = self.magic_trigger.text().strip() or "嘿 VoiceType"
         self.config["hotkey_ptt"] = self.btn_ptt.key_str
         self.config["auto_paste"] = self.auto_paste.isChecked()
         self.config["debug_mode"] = self.debug_mode.isChecked()
+        self.config["debug_demo_mode"] = self.debug_demo_mode.isChecked()
 
         try:
-            SOUL_PATH.write_text(self.soul_prompt.toPlainText().strip(), encoding="utf-8")
+            SOUL_BASE_PATH.write_text(self.soul_prompt.toPlainText().strip(), encoding="utf-8")
         except: pass
 
         save_config(self.config)

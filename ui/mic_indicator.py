@@ -104,12 +104,20 @@ class MicIndicatorWindow(QWidget):
         self.update()
         QTimer.singleShot(500, self._stop_flash)
         
-        # macOS 音效回饋
-        import subprocess
-        try:
-            subprocess.Popen(["afplay", "/System/Library/Sounds/Glass.aiff"])
-        except:
-            pass
+        # macOS/Windows 音效回饋
+        import platform
+        if platform.system() == "Darwin":
+            import subprocess
+            try:
+                subprocess.Popen(["afplay", "/System/Library/Sounds/Glass.aiff"])
+            except:
+                pass
+        elif platform.system() == "Windows":
+            try:
+                import winsound
+                winsound.Beep(1000, 100)
+            except:
+                pass
 
     def _stop_flash(self):
         self._flash_active = False
@@ -132,9 +140,11 @@ class MicIndicatorWindow(QWidget):
         wave_color = QColor(255, 255, 255, 240) if self._flash_active else self.STATE_COLORS.get(self._state, QColor(255, 80, 80))
 
         # ── 寬度計算與置中 ──
-        f_prefix = QFont("PingFang TC", 7)
+        import platform
+        font_family = "PingFang TC" if platform.system() == "Darwin" else "Microsoft JhengHei"
+        f_prefix = QFont(font_family, 7)
         f_prefix.setBold(True)
-        f_label = QFont("PingFang TC", 7)
+        f_label = QFont(font_family, 7)
         fm_prefix = QFontMetrics(f_prefix)
         fm_label = QFontMetrics(f_label)
 

@@ -32,10 +32,16 @@ DEFAULT_CONFIG = {
     "deepseek_model": "deepseek-chat",
     # 記憶
     "memory_enabled": True,
+    # v2.5 靈魂系統
+    "active_scenario": "default",
+    "active_format": "natural",
+    "action_mode": False,
     # 統計 / Debug
     "debug_mode": False,
+    "debug_demo_mode": False,
     # 其他
     "auto_paste": True,
+    "magic_trigger": "嘿 VoiceType",
 }
 from paths import CONFIG_PATH
 

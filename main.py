@@ -797,7 +797,7 @@ class VoiceTypeApp:
              icon_path = None # Fallback
 
         self.tray = TrayManager(
-            title="VoiceType4TW",
+            title="VoiceType4TW v2.5.0",
             icon_path=icon_path,
             menu_items=self.menu_bar.get_menu_items()
         )

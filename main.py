@@ -39,7 +39,7 @@ from ui.menu_bar import VoiceTypeMenuBar
 from ui.tray_manager import TrayManager, IS_WINDOWS
 from PyQt6.QtGui import QIcon
 
-from paths import CONFIG_PATH, SOUL_BASE_PATH, SOUL_SCENARIO_DIR, SOUL_FORMAT_DIR, SOUL_TEMPLATE_DIR
+from paths import CONFIG_PATH, SOUL_BASE_PATH, SOUL_SCENARIO_DIR, SOUL_FORMAT_DIR, SOUL_TEMPLATE_DIR, SOUL_SNIPPET_DIR
 
 # ── 內建 LLM Prompt ──────────────────────────────────────────────
 DEFAULT_LLM_PROMPT = (

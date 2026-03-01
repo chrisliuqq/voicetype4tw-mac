@@ -15,11 +15,11 @@ class TrayManager:
         self._tray = None
         self._loop_thread = None
 
-    def start(self):
+    def start(self, on_tick: Optional[Callable] = None):
         if IS_WINDOWS:
             self._start_windows()
         else:
-            self._start_macos()
+            self._start_macos(on_tick)
 
     def stop(self):
         if IS_WINDOWS:
@@ -54,13 +54,14 @@ class TrayManager:
         except ImportError:
             print("[tray] Error: pystray or Pillow not found. System tray will not be available.")
 
-    def _start_macos(self):
+    def _start_macos(self, on_tick: Optional[Callable] = None):
         try:
             import rumps
             class App(rumps.App):
-                def __init__(self, title, icon, items):
+                def __init__(self, title, icon, items, tick_callback):
                     super().__init__(title, icon=icon, quit_button=None)
                     self.items = items
+                    self.tick_callback = tick_callback
                     self._rebuild_menu()
 
                 def _rebuild_menu(self):
@@ -74,7 +75,12 @@ class TrayManager:
                         self.menu.add(btn)
                     self.menu.add(rumps.MenuItem("結束", callback=lambda _: rumps.quit_application()))
 
-            self._tray = App(self.title, self.icon_path, self.menu_items)
+                @rumps.timer(0.1)
+                def drive_tick(self, _):
+                    if self.tick_callback:
+                        self.tick_callback()
+
+            self._tray = App(self.title, self.icon_path, self.menu_items, on_tick)
             self._tray.run()
         except ImportError:
             print("[tray] Error: rumps not found.")

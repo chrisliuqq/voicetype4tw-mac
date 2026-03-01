@@ -315,6 +315,11 @@ pyinstaller --onefile --windowed --name VoiceType4TW-Win --icon assets/icon.ico 
 - **資安友善設計**：比對與替換邏輯完全在本地運行，敏感資訊（如地址、帳號）不會上傳至雲端 LLM（除非配合使用 AI 潤飾且關鍵字已被替換）。
 - **長短語優先**：採長度遞減搜尋，確保複合詞優先匹配。
 
+### ✅ macOS 穩定性修復 (事件迴圈衝突) (2026-03-01)
+- **事件驅動標準化**：修正了 `rumps` (Cocoa) 與 `PyQt6` 事件迴圈並存時的崩潰問題。
+- **內部 Timer 註冊**：將 `processEvents()` 的驅動邏輯從 `main.py` 移入 `TrayManager` 內部，確保 `rumps.timer` 能夠正確掛載到 App 實例上。
+- **防止 SIGABRT**：解決了使用者在視窗內點擊鍵盤時，因為 Qt 失去主線程驅動而導出的核心崩潰問題。
+
 ---
 
 ## 15. 一鍵安裝腳本 install.sh (2026-03-01)

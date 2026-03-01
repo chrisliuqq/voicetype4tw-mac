@@ -818,14 +818,12 @@ class VoiceTypeApp:
             # Start the Qt Event Loop in main thread
             sys.exit(self.indicator._app.exec())
         else:
-            # macOS: Existing rumps + Qt event timer architecture
-            import rumps
-            @rumps.timer(0.05)
-            def drive_qt_events(_):
+            # macOS: Drive Qt events via the rumps timer in TrayManager
+            def drive_qt_events():
                 if self.indicator._app:
                     self.indicator._app.processEvents()
 
-            self.tray.start() # In macOS this is menu_bar.run() essentially
+            self.tray.start(on_tick=drive_qt_events)
 
 
 if __name__ == "__main__":
